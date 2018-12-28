@@ -14,8 +14,8 @@
         android:layout_weight="1.4"
         android:fontFamily="sans-serif"
         android:gravity="center"
-        android:text="SCH\nPerfect Map"
         android:textColor="#000"
+        android:text="SCH\nPerfect Map"
         android:textSize="40sp" />
 
     <Space

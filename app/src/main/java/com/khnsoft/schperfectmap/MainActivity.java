@@ -13,7 +13,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_admin_interface);
+        setContentView(R.layout.activity_main);
 
         mode_user = findViewById(R.id.mode_user);
         mode_user.setOnClickListener(this);
@@ -30,7 +30,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 startActivity(UI);
                 break;
             case R.id.mode_admin:
-                Intent AI = new Intent(MainActivity.this, admin_interface.class);
+                Intent AI = new Intent(MainActivity.this, add_ap_info.class);
                 startActivity(AI);
                 break;
         }

@@ -4,13 +4,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:weightSum="10">
+    android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
         android:weightSum="2"
         android:orientation="horizontal">
 
@@ -19,6 +17,7 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:layout_marginVertical="5dp"
             android:layout_marginLeft="20dp"
             android:layout_marginRight="10dp"
             android:text="새로고침" />
@@ -28,21 +27,63 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:layout_marginVertical="5dp"
             android:layout_marginLeft="10dp"
             android:layout_marginRight="20dp"
             android:text="전송" />
     </LinearLayout>
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="5"
+        android:background="@drawable/ap_layout_box">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="2"
+            android:fontFamily="sans-serif"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="SSID"
+            android:background="@drawable/ap_layout_box_small"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="2"
+            android:fontFamily="sans-serif"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="BSSID"
+            android:background="@drawable/ap_layout_box_small"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="LEVEL"
+            android:background="@drawable/ap_layout_box_small"/>
+    </LinearLayout>
+
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="match_parent" >
 
         <LinearLayout
             android:id="@+id/container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:orientation="vertical"
+            android:background="@drawable/ap_layout_box" >
+        </LinearLayout>
     </ScrollView>
-
 </LinearLayout>
