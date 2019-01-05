@@ -17,12 +17,13 @@ import android.view.MenuItem;
 
 public class drawer_main extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
-    
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_drawer_main);
+
+        /********** 드로어 기본 **********/
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
@@ -34,6 +35,9 @@ public class drawer_main extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+        /********** 드로어 기본 **********/
+
+
     }
 
     @Override
@@ -80,6 +84,8 @@ public class drawer_main extends AppCompatActivity
         } else if (id == R.id.admin_interface) {
             Intent intent = new Intent(drawer_main.this, add_ap_info.class);
             startActivity(intent);
+        } else if (id == R.id.setting) {
+
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);

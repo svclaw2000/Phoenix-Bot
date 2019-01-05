@@ -9,24 +9,28 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
+import android.support.annotation.Nullable;
+import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.io.IOException;
 import java.util.List;
 
-public class user_interface extends AppCompatActivity implements SurfaceHolder.Callback {
+import static android.content.Context.MODE_PRIVATE;
+import static android.content.Context.SENSOR_SERVICE;
+
+public class UserFragment extends Fragment {
     SurfaceView preview;
     Camera camera;
     SurfaceHolder cameraHolder;
@@ -43,12 +47,16 @@ public class user_interface extends AppCompatActivity implements SurfaceHolder.C
     SharedPreferences sp;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_user_interface);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.activity_user_interface, container, false);
+    }
 
-        preview = findViewById(R.id.preview_camera);
-        background = findViewById(R.id.background);
+    @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+
+        preview = getView().findViewById(R.id.preview_camera);
+        background = getView().findViewById(R.id.background);
         background.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -56,24 +64,26 @@ public class user_interface extends AppCompatActivity implements SurfaceHolder.C
             }
         });
 
-        sm = (SensorManager) getSystemService(SENSOR_SERVICE);
+        sm = (SensorManager) getActivity().getSystemService(SENSOR_SERVICE);
         mAccelerometer = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mMagneticField = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        azimut = findViewById(R.id.azimut);
-        pitch = findViewById(R.id.pitch);
-        roll = findViewById(R.id.roll);
+        azimut = getView().findViewById(R.id.azimut);
+        pitch = getView().findViewById(R.id.pitch);
+        roll = getView().findViewById(R.id.roll);
         mAzimut = 0;
         mPitch = 0;
         mRoll = 0;
 
-        sp = getSharedPreferences("settings", MODE_PRIVATE);
+        sp = getActivity().getSharedPreferences("settings", MODE_PRIVATE);
         if (sp.getBoolean("direction", true)) {
-            findViewById(R.id.sensorName).setVisibility(View.VISIBLE);
-            findViewById(R.id.sensorValue).setVisibility(View.VISIBLE);
+            getView().findViewById(R.id.sensorName).setVisibility(View.VISIBLE);
+            getView().findViewById(R.id.sensorValue).setVisibility(View.VISIBLE);
+        } else {
+            getView().findViewById(R.id.sensorName).setVisibility(View.INVISIBLE);
+            getView().findViewById(R.id.sensorValue).setVisibility(View.INVISIBLE);
         }
 
         init();
-        //holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
     }
 
     Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
@@ -83,62 +93,71 @@ public class user_interface extends AppCompatActivity implements SurfaceHolder.C
     };
 
     void init() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[] {Manifest.permission.CAMERA}, 0x12345);
             init();
         } else {
             camera = Camera.open();
             camera.setDisplayOrientation(90);
             cameraHolder = preview.getHolder();
-            cameraHolder.addCallback(this);
+            cameraHolder.addCallback(callback);
         }
     }
 
-    @Override
-    public void surfaceCreated(SurfaceHolder holder) {
-        try {
-            if (camera == null) {
-                camera.setPreviewDisplay(holder);
-                camera.startPreview();
+    SurfaceHolder.Callback callback = new SurfaceHolder.Callback() {
+        @Override
+        public void surfaceCreated(SurfaceHolder holder) {
+            try {
+                if (camera == null) {
+                    camera.setPreviewDisplay(holder);
+                    camera.startPreview();
+                }
+            } catch (IOException e) {
             }
-        } catch (IOException e) {
         }
-    }
+
+        @Override
+        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+            if (cameraHolder == null) return;
+
+            try {
+                camera.stopPreview();
+            } catch (Exception e) {
+            }
+
+            Camera.Parameters parameters = camera.getParameters();
+            List<String> focusModes = parameters.getSupportedFocusModes();
+            if (focusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+            }
+            camera.setParameters(parameters);
+            try {
+                camera.setPreviewDisplay(cameraHolder);
+                camera.startPreview();
+            } catch (Exception e) {
+            }
+        }
+
+        @Override
+        public void surfaceDestroyed(SurfaceHolder holder) {
+            if (camera != null) {
+                camera.stopPreview();
+                camera.release();
+                camera = null;
+            }
+        }
+    };
 
     @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        if (cameraHolder == null) return;
-
-        try {
-            camera.stopPreview();
-        } catch (Exception e) {
-        }
-
-        Camera.Parameters parameters = camera.getParameters();
-        List<String> focusModes = parameters.getSupportedFocusModes();
-        if (focusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
-            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
-        }
-        camera.setParameters(parameters);
-        try {
-            camera.setPreviewDisplay(cameraHolder);
-            camera.startPreview();
-        } catch (Exception e) {
-        }
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-        if (camera != null) {
-            camera.stopPreview();
-            camera.release();
-            camera = null;
-        }
-    }
-
-    @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
+        if (sp.getBoolean("direction", true)) {
+            getView().findViewById(R.id.sensorName).setVisibility(View.VISIBLE);
+            getView().findViewById(R.id.sensorValue).setVisibility(View.VISIBLE);
+        } else {
+            getView().findViewById(R.id.sensorName).setVisibility(View.INVISIBLE);
+            getView().findViewById(R.id.sensorValue).setVisibility(View.INVISIBLE);
+        }
         try {
             camera.startPreview();
         } catch (Exception e) {
@@ -146,10 +165,11 @@ public class user_interface extends AppCompatActivity implements SurfaceHolder.C
         sm.registerListener(sensorlistener, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         sm.registerListener(sensorlistener, mMagneticField, SensorManager.SENSOR_DELAY_NORMAL);
         handler.sendEmptyMessage(0);
+
     }
 
     @Override
-    protected void onPause() {
+    public void onPause() {
         sm.unregisterListener(sensorlistener);
         try {
             camera.stopPreview();

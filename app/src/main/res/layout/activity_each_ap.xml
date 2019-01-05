@@ -14,7 +14,7 @@
         android:layout_weight="2"
         android:fontFamily="sans-serif"
         android:gravity="center"
-        android:textColor="#000"
+        android:textColor="#FFF"
         android:textSize="16sp"
         android:text="SSID"
         android:background="@drawable/ap_layout_box_small"/>
@@ -26,7 +26,7 @@
         android:layout_weight="2"
         android:fontFamily="sans-serif"
         android:gravity="center"
-        android:textColor="#000"
+        android:textColor="#FFF"
         android:textSize="16sp"
         android:text="BSSID"
         android:background="@drawable/ap_layout_box_small"/>
@@ -38,7 +38,7 @@
         android:layout_weight="1"
         android:fontFamily="sans-serif"
         android:gravity="center"
-        android:textColor="#000"
+        android:textColor="#FFF"
         android:textSize="16sp"
         android:text="LEVEL"
         android:background="@drawable/ap_layout_box_small"/>

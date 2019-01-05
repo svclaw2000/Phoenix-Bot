@@ -23,47 +23,48 @@
             android:layout_weight="18" />
 
         <LinearLayout
+            android:id="@+id/sensorName"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:orientation="horizontal"
             android:layout_weight="1"
             android:weightSum="3"
+            android:visibility="invisible"
             android:background="#FFF">
 
             <TextView
-                android:id="@+id/Tazimut"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:background="@drawable/ap_layout_box_small"
+                android:background="@drawable/ap_layout_box_white"
                 android:text="Azimut" />
 
             <TextView
-                android:id="@+id/Tpitch"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:background="@drawable/ap_layout_box_small"
+                android:background="@drawable/ap_layout_box_white"
                 android:text="Pitch" />
 
             <TextView
-                android:id="@+id/Troll"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:background="@drawable/ap_layout_box_small"
+                android:background="@drawable/ap_layout_box_white"
                 android:text="Roll" />
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/sensorValue"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:orientation="horizontal"
             android:layout_weight="1"
             android:weightSum="3"
+            android:visibility="invisible"
             android:background="#FFF">
 
             <TextView
@@ -72,7 +73,7 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:background="@drawable/ap_layout_box_small"
+                android:background="@drawable/ap_layout_box_white"
                 android:text="0" />
 
             <TextView
@@ -81,7 +82,7 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:background="@drawable/ap_layout_box_small"
+                android:background="@drawable/ap_layout_box_white"
                 android:text="0" />
 
             <TextView
@@ -90,7 +91,7 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:background="@drawable/ap_layout_box_small"
+                android:background="@drawable/ap_layout_box_white"
                 android:text="0" />
         </LinearLayout>
     </LinearLayout>

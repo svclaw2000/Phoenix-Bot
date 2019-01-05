@@ -10,7 +10,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:weightSum="2"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:layout_margin="1dp"
+        android:background="@color/addAp">
 
         <Button
             android:id="@+id/refresh"
@@ -38,7 +40,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:weightSum="5"
-        android:background="@drawable/ap_layout_box">
+        android:layout_marginHorizontal="1dp">
 
         <TextView
             android:layout_width="0dp"
@@ -46,10 +48,10 @@
             android:layout_weight="2"
             android:fontFamily="sans-serif"
             android:gravity="center"
-            android:textColor="#000"
+            android:textColor="#FFF"
             android:textSize="16sp"
             android:text="SSID"
-            android:background="@drawable/ap_layout_box_small"/>
+            android:background="@color/addAp"/>
 
         <TextView
             android:layout_width="0dp"
@@ -57,10 +59,11 @@
             android:layout_weight="2"
             android:fontFamily="sans-serif"
             android:gravity="center"
-            android:textColor="#000"
+            android:textColor="#FFF"
             android:textSize="16sp"
             android:text="BSSID"
-            android:background="@drawable/ap_layout_box_small"/>
+            android:layout_marginHorizontal="1dp"
+            android:background="@color/addAp"/>
 
         <TextView
             android:layout_width="0dp"
@@ -68,15 +71,17 @@
             android:layout_weight="1"
             android:fontFamily="sans-serif"
             android:gravity="center"
-            android:textColor="#000"
+            android:textColor="#FFF"
             android:textSize="16sp"
             android:text="LEVEL"
-            android:background="@drawable/ap_layout_box_small"/>
+            android:background="@color/addAp"/>
     </LinearLayout>
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent" >
+        android:layout_height="match_parent"
+        android:layout_margin="1dp"
+        android:background="@color/addAp">
 
         <LinearLayout
             android:id="@+id/container"

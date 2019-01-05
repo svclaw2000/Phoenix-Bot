@@ -1,38 +1,50 @@
 package com.khnsoft.schperfectmap;
 
-import android.content.Intent;
+import android.support.design.widget.TabLayout;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
+import android.support.v7.widget.Toolbar;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener{
-    Button mode_user;
-    Button mode_admin;
+public class MainActivity extends AppCompatActivity {
+    ViewPager pager;
+    Toolbar toolbar;
+    TabLayout tabLayout;
+    PagerAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mode_user = findViewById(R.id.mode_user);
-        mode_user.setOnClickListener(this);
+        // toolbar = findViewById(R.id.toolbar);
+        // setSupportActionBar(toolbar);
 
-        mode_admin = findViewById(R.id.mode_admin);
-        mode_admin.setOnClickListener(this);
-    }
+        tabLayout = findViewById(R.id.tab_layout);
+        tabLayout.addTab(tabLayout.newTab().setText("사용자"));
+        tabLayout.addTab(tabLayout.newTab().setText("관리자"));
+        tabLayout.addTab(tabLayout.newTab().setText("환경설정"));
+        tabLayout.setTabGravity(TabLayout.GRAVITY_FILL);
 
-    @Override
-    public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.mode_user:
-                Intent UI = new Intent(MainActivity.this, user_interface.class);
-                startActivity(UI);
-                break;
-            case R.id.mode_admin:
-                Intent AI = new Intent(MainActivity.this, add_ap_info.class);
-                startActivity(AI);
-                break;
-        }
+        pager = findViewById(R.id.pager);
+        adapter = new PagerAdapter(getSupportFragmentManager(), tabLayout.getTabCount());
+        pager.setAdapter(adapter);
+        pager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(tabLayout));
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                pager.setCurrentItem(tab.getPosition());
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+
+            }
+        });
     }
 }
