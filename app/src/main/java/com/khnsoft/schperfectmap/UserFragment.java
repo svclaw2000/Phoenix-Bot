@@ -165,7 +165,6 @@ public class UserFragment extends Fragment {
         sm.registerListener(sensorlistener, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         sm.registerListener(sensorlistener, mMagneticField, SensorManager.SENSOR_DELAY_NORMAL);
         handler.sendEmptyMessage(0);
-
     }
 
     @Override

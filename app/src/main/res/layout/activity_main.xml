@@ -1,61 +1,135 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
-    tools:context=".MainActivity">
+    android:layout_height="match_parent" >
 
-    <!--
-    <android.support.v7.widget.Toolbar
-        android:id="@+id/toolbar"
+    <SurfaceView
+        android:id="@+id/preview_camera"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:background="?attr/colorPrimary"
-        android:elevation="6dp"
-        android:minHeight="?attr/actionBarSize"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/> -->
+        android:layout_height="match_parent"/>
 
-    <android.support.design.widget.TabLayout
-        android:id="@+id/tab_layout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/toolbar"
-        android:background="?attr/colorPrimary"
-        android:elevation="6dp"
-        android:minHeight="?attr/actionBarSize"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"/>
-
-    <android.support.v4.view.ViewPager
-        android:id="@+id/pager"
-        android:layout_width="match_parent"
-        android:layout_height="fill_parent"
-        android:layout_below="@id/tab_layout"/>
-
-    <!--
-    <android.support.design.widget.AppBarLayout
-        android:id="@+id/appbar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="20dp"
-        android:theme="@style/AppTheme.AppBarOverlay">
-
-        <android.support.v7.widget.Toolbar
-            android:id="@+id/toolbar1"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            app:layout_scrollFlags="scroll|enterAlways"
-            app:popupTheme="@style/AppTheme.PopupOverlay" />
-
-    </android.support.design.widget.AppBarLayout> -->
-
-    <android.support.v4.view.ViewPager
-        android:id="@+id/container"
+    <LinearLayout
+        android:id="@+id/background"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
-</android.support.design.widget.CoordinatorLayout>
+        android:orientation="vertical"
+        android:weightSum="20">
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="18" />
+
+        <LinearLayout
+            android:id="@+id/sensorName"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:orientation="horizontal"
+            android:layout_weight="1"
+            android:weightSum="3"
+            android:visibility="invisible"
+            android:background="#FFF">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:background="@drawable/ap_layout_box_white"
+                android:text="Azimut" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:background="@drawable/ap_layout_box_white"
+                android:text="Pitch" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:background="@drawable/ap_layout_box_white"
+                android:text="Roll" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/sensorValue"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:orientation="horizontal"
+            android:layout_weight="1"
+            android:weightSum="3"
+            android:visibility="invisible"
+            android:background="#FFF">
+
+            <TextView
+                android:id="@+id/azimut"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:background="@drawable/ap_layout_box_white"
+                android:text="0" />
+
+            <TextView
+                android:id="@+id/pitch"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:background="@drawable/ap_layout_box_white"
+                android:text="0" />
+
+            <TextView
+                android:id="@+id/roll"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:background="@drawable/ap_layout_box_white"
+                android:text="0" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:backgroundTint="#beffd0"
+        android:tint="#000"
+        app:backgroundTint="#8affaa"
+        android:clickable="true"/>
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/fab1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="70dp"
+        android:backgroundTint="#beffd0"
+        android:tint="#000"
+        app:backgroundTint="#8affaa"
+        android:visibility="invisible"
+        android:clickable="true"/>
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/fab2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="120dp"
+        android:layout_marginEnd="16dp"
+        android:backgroundTint="#beffd0"
+        android:clickable="true"
+        android:tint="#000"
+        android:visibility="invisible"
+        app:backgroundTint="#8affaa" />
+</FrameLayout>

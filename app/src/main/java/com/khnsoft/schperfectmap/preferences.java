@@ -11,7 +11,6 @@ import android.widget.Toast;
 
 public class preferences extends AppCompatActivity {
     EditText ip_edit;
-    EditText port_edit;
     CheckBox direction;
     Button saveSettings;
     SharedPreferences sp;
@@ -23,7 +22,6 @@ public class preferences extends AppCompatActivity {
         setContentView(R.layout.activity_preferences);
 
         ip_edit = findViewById(R.id.ip_edit);
-        port_edit = findViewById(R.id.port_edit);
         direction = findViewById(R.id.direction);
         saveSettings = findViewById(R.id.saveSettings);
 
@@ -31,17 +29,16 @@ public class preferences extends AppCompatActivity {
         editor = sp.edit();
 
         ip_edit.setText(sp.getString("ip", ""));
-        port_edit.setText(sp.getString("port", ""));
         direction.setChecked(sp.getBoolean("direction", true));
 
         saveSettings.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 editor.putString("ip", ip_edit.getText().toString());
-                editor.putString("port", port_edit.getText().toString());
                 editor.putBoolean("direction", direction.isChecked());
                 editor.apply();
                 Toast.makeText(preferences.this, "저장되었습니다.", Toast.LENGTH_SHORT).show();
+                finish();
             }
         });
     }

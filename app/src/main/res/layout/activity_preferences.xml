@@ -27,33 +27,74 @@
             android:gravity="center"
             android:textSize="17sp"
             android:textColor="#000"
-            android:text="IP &amp; Port" />
+            android:text="IP 주소" />
 
         <EditText
             android:id="@+id/ip_edit"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="2"
+            android:layout_weight="3"
             android:textSize="17sp"
             android:textColor="#000"
             android:inputType="text"
             android:hint="IP" />
+    </LinearLayout>
 
-        <EditText
-            android:id="@+id/port_edit"
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:weightSum="4"
+        android:layout_marginHorizontal="10dp"
+        android:orientation="horizontal">
+
+        <TextView
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:gravity="center"
+            android:textSize="17sp"
+            android:textColor="#000"
+            android:text="ID" />
+
+        <EditText
+            android:id="@+id/id_edit"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="3"
             android:textSize="17sp"
             android:textColor="#000"
             android:inputType="text"
-            android:hint="Port" />
+            android:hint="ID" />
     </LinearLayout>
 
-    <Space
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_weight="0.5" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:weightSum="4"
+        android:layout_marginHorizontal="10dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textSize="17sp"
+            android:textColor="#000"
+            android:text="PW" />
+
+        <EditText
+            android:id="@+id/pw_edit"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="3"
+            android:textSize="17sp"
+            android:textColor="#000"
+            android:inputType="text"
+            android:hint="PW" />
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"

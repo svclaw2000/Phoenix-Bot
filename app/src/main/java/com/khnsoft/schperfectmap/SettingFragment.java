@@ -34,7 +34,6 @@ public class SettingFragment extends Fragment {
 
         Log.i("@@@", "Setting Fragment Called");
         ip_edit = getView().findViewById(R.id.ip_edit);
-        port_edit = getView().findViewById(R.id.port_edit);
         direction = getView().findViewById(R.id.direction);
         saveSettings = getView().findViewById(R.id.saveSettings);
 
