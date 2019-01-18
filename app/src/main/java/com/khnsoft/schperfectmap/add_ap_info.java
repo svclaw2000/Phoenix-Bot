@@ -5,7 +5,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.location.LocationManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -16,14 +20,17 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class add_ap_info extends AppCompatActivity {
     WifiManager wm;
+    LocationManager lm;
     List<ScanResult> scanResult;
     Button refresh;
     String[] permissions = new String[] {Manifest.permission.ACCESS_COARSE_LOCATION};
@@ -31,18 +38,37 @@ public class add_ap_info extends AppCompatActivity {
     LinearLayout container;
     int count;
     int check;
+    EditText row_edit;
+    EditText col_edit;
+    Button save_ap;
+    String SQL;
+    SQLiteDatabase db;
+    SharedPreferences sp;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_ap_info);
 
+        db = openOrCreateDatabase("MAP_DATA", MODE_PRIVATE, null);
+        sp = getSharedPreferences("settings", MODE_PRIVATE);
+
+        String ver = sp.getString("version_map", "0.1");
+        final String name = "VERSION_" + ver.replaceAll("\\.", "_");
+
         wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+        lm = (LocationManager) getApplicationContext().getSystemService(LOCATION_SERVICE);
 
         refresh = findViewById(R.id.refresh);
+        save_ap = findViewById(R.id.save_AP);
+
         refresh.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (!lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    Toast.makeText(add_ap_info.this, "AP정보를 검색하기 위해 위치 서비스를 켜주십시오.", Toast.LENGTH_LONG).show();
+                    return;
+                }
                 wm.startScan();
                 count++;
                 Log.i("@@@", "Button clicked.");
@@ -52,6 +78,42 @@ public class add_ap_info extends AppCompatActivity {
         count = 0;
         check = 0;
         container = findViewById(R.id.container);
+
+        row_edit = findViewById(R.id.row_num);
+        col_edit = findViewById(R.id.col_num);
+        save_ap.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (scanResult == null || scanResult.size()==0) {
+                    Toast.makeText(add_ap_info.this, "저장할 내용이 없습니다. 새로고침 버튼을 눌러 AP를 스캔해주십시오.", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                String row = row_edit.getText().toString();
+                String col = col_edit.getText().toString();
+                SQL = String.format("SELECT row_num, col_num FROM %s WHERE row_num=\"%s\" AND col_num=\"%s\"", name, row, col);
+                Log.i("@@@", "rawQuery: " + SQL);
+                Cursor count = db.rawQuery(SQL, null);
+                if (count == null || count.getCount()==0) {
+                    Toast.makeText(add_ap_info.this, "잘못된 위치를 입력했습니다. 확인 후 다시 시도해주십시오.", Toast.LENGTH_LONG).show();;
+                    return;
+                }
+                SQL = String.format("DELETE FROM %s WHERE row_num=\"%s\" AND col_num=\"%s\"", name, row, col);
+                Log.i("@@@", "execSQL: " + SQL);
+                db.execSQL(SQL);
+                for (int i = 0; i < scanResult.size(); i++) {
+                    ScanResult result = scanResult.get(i);
+                    SQL = String.format("INSERT INTO %s (row_num, col_num, mac, level) VALUES (\"%s\", \"%s\", \"%s\", \"%s\")", name, row, col, result.BSSID, result.level);
+                    Log.i("@@@", "execSQL: " + SQL);
+                    db.execSQL(SQL);
+                }
+                Toast.makeText(add_ap_info.this, "저장되었습니다.", Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        });
+
+        Intent intent = getIntent();
+        row_edit.setText(intent.getStringExtra("row"));
+        col_edit.setText(intent.getStringExtra("col"));
     }
 
     @Override

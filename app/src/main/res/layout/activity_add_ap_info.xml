@@ -4,17 +4,119 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:focusable="true"
+    android:focusableInTouchMode="true" >
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:weightSum="2"
+        android:orientation="horizontal"
+        android:weightSum="5"
+        android:layout_marginHorizontal="1dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="2"
+            android:fontFamily="sans-serif"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:background="@drawable/ap_layout_box_small"
+            android:text="SSID"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="2"
+            android:fontFamily="sans-serif"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="BSSID"
+            android:layout_marginHorizontal="1dp"
+            android:background="@drawable/ap_layout_box_small"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="LEVEL"
+            android:background="@drawable/ap_layout_box_small"/>
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_margin="1dp">
+
+        <LinearLayout
+            android:id="@+id/container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/ap_layout_box" >
+        </LinearLayout>
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:layout_margin="1dp"
-        android:background="@color/addAp">
+
+        android:background="@drawable/ap_layout_box_small">
 
         <Button
+            android:id="@+id/refresh"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="3"
+            android:text="새로고침" />
+
+        <EditText
+            android:id="@+id/row_num"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:inputType="number"
+            android:gravity="center"
+            android:textColor="#000"
+            android:hint="R"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.5"
+            android:gravity="center"
+            android:textSize="20sp"
+            android:textColor="#000"
+            android:text="/" />
+
+        <EditText
+            android:id="@+id/col_num"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:inputType="number"
+            android:gravity="center"
+            android:textColor="#000"
+            android:hint="C"/>
+
+        <Button
+            android:id="@+id/save_AP"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:text="저장" />
+
+        <!-- <Button
             android:id="@+id/refresh"
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -32,63 +134,6 @@
             android:layout_marginVertical="5dp"
             android:layout_marginLeft="10dp"
             android:layout_marginRight="20dp"
-            android:text="전송" />
+            android:text="전송" /> -->
     </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:weightSum="5"
-        android:layout_marginHorizontal="1dp">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="30dp"
-            android:layout_weight="2"
-            android:fontFamily="sans-serif"
-            android:gravity="center"
-            android:textColor="#FFF"
-            android:textSize="16sp"
-            android:text="SSID"
-            android:background="@color/addAp"/>
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="30dp"
-            android:layout_weight="2"
-            android:fontFamily="sans-serif"
-            android:gravity="center"
-            android:textColor="#FFF"
-            android:textSize="16sp"
-            android:text="BSSID"
-            android:layout_marginHorizontal="1dp"
-            android:background="@color/addAp"/>
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="30dp"
-            android:layout_weight="1"
-            android:fontFamily="sans-serif"
-            android:gravity="center"
-            android:textColor="#FFF"
-            android:textSize="16sp"
-            android:text="LEVEL"
-            android:background="@color/addAp"/>
-    </LinearLayout>
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_margin="1dp"
-        android:background="@color/addAp">
-
-        <LinearLayout
-            android:id="@+id/container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="@drawable/ap_layout_box" >
-        </LinearLayout>
-    </ScrollView>
 </LinearLayout>

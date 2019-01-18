@@ -8,110 +8,141 @@
     android:weightSum="8">
 
     <Space
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_weight="2" />
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:weightSum="4"
-        android:layout_marginHorizontal="10dp"
         android:orientation="horizontal">
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <CheckBox
+            android:id="@+id/check_admin"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:text="Admin" />
+
+        <CheckBox
+            android:id="@+id/check_user"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:text="User" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginHorizontal="10dp"
+        android:orientation="horizontal"
+        android:weightSum="4">
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
-            android:textSize="17sp"
+            android:text="IP 주소\n(http://)"
             android:textColor="#000"
-            android:text="IP 주소" />
+            android:textSize="17sp" />
 
         <EditText
             android:id="@+id/ip_edit"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="3"
-            android:textSize="17sp"
-            android:textColor="#000"
+            android:hint="IP"
             android:inputType="text"
-            android:hint="IP" />
+            android:textColor="#000"
+            android:textSize="17sp" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:weightSum="4"
         android:layout_marginHorizontal="10dp"
-        android:orientation="horizontal">
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:weightSum="4">
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
-            android:textSize="17sp"
+            android:text="ID"
             android:textColor="#000"
-            android:text="ID" />
+            android:textSize="17sp" />
 
         <EditText
             android:id="@+id/id_edit"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="3"
-            android:textSize="17sp"
-            android:textColor="#000"
+            android:hint="ID"
             android:inputType="text"
-            android:hint="ID" />
+            android:textColor="#000"
+            android:textSize="17sp" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:weightSum="4"
         android:layout_marginHorizontal="10dp"
-        android:orientation="horizontal">
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:weightSum="4">
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
-            android:textSize="17sp"
+            android:text="PW"
             android:textColor="#000"
-            android:text="PW" />
+            android:textSize="17sp" />
 
         <EditText
             android:id="@+id/pw_edit"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="3"
-            android:textSize="17sp"
+            android:hint="PW"
+            android:inputType="textPassword"
             android:textColor="#000"
-            android:inputType="text"
-            android:hint="PW" />
+            android:textSize="17sp" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:weightSum="4"
         android:layout_marginHorizontal="10dp"
-        android:orientation="horizontal">
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:weightSum="4">
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="3"
             android:gravity="center"
-            android:textSize="17sp"
+            android:text="방향값 표시"
             android:textColor="#000"
-            android:text="방향값 표시" />
+            android:textSize="17sp" />
 
         <CheckBox
             android:id="@+id/direction"
@@ -120,17 +151,11 @@
             android:layout_weight="1" />
     </LinearLayout>
 
-    <Space
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_weight="1" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="horizontal">
-
 
         <Button
             android:id="@+id/saveSettings"

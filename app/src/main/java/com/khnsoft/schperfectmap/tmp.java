@@ -12,6 +12,7 @@ import android.util.Log;
 import android.widget.TextView;
 
 public class tmp {
+
 }
 /*
 package com.khnsoft.schperfectmap;

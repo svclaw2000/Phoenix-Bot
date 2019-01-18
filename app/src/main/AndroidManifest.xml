@@ -3,7 +3,6 @@
     package="com.khnsoft.schperfectmap">
 
     <uses-permission android:name="android.permission.INTERNET" />
-
     <uses-permission android:name="android.permission.CAMERA" />
 
     <uses-feature android:name="android.hardware.camera" />
@@ -36,7 +35,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".preferences"></activity>
+        <activity android:name=".preferences" />
+        <activity android:name=".view_db" />
+        <activity android:name=".db_item" />
+        <activity android:name=".map_row" />
+        <activity android:name=".map_col"></activity>
     </application>
 
 </manifest>
