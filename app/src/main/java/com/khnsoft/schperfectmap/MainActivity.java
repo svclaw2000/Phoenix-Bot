@@ -344,4 +344,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             isOpen = true;
         }
     }
+
+    /*
+    * 리턴값은 어떻게 나올지 몰라서 일단 float[] 으로 했고, 필요하신 자료형으로 바꾸셔도 됩니다,
+    * int[] userPos : 사용자 위치 (지도의 [0]X, [1]Y 좌표)
+    * float[] userDirt : 사용자 각도 ([0]좌우각도, [1]상하각도, [2]화면회전각도)
+    *                    일단은 기기에서 구해지는 각도
+    * int[] toonPos : 캐릭터 위치 (지도의 [0]X, [1]Y 좌표)
+    * float[] toonDirt : 캐릭터 각도 ([0]좌우각도 ...) 이 부분은 정해서 알려주시면 수정하겠습니다.
+    */
+    float[] toonPosition(int[] userPos, float[] userDirt, int[] toonPos, float[] toonDirt) {
+
+        return null;
+    }
 }
