@@ -39,7 +39,17 @@
         <activity android:name=".view_db" />
         <activity android:name=".db_item" />
         <activity android:name=".map_row" />
-        <activity android:name=".map_col"></activity>
+        <activity android:name=".map_col" />
+        <activity android:name=".view_log"/>
+        <provider
+            android:name="android.support.v4.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths"/>
+        </provider>
     </application>
 
 </manifest>

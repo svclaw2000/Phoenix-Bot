@@ -3,83 +3,167 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_margin="3dp">
 
     <TextView
-        android:id="@+id/DBname"
+        android:id="@+id/dbname"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_height="40dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:layout_marginHorizontal="1dp"
-        android:text="DB명"
         android:textColor="#000"
-        android:background="@drawable/ap_layout_box_small"
-        android:textSize="17sp" />
+        android:textSize="16sp"
+        android:text="DATABASE NAME"
+        android:background="@drawable/ap_layout_box_small"/>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginHorizontal="1dp"
-        android:layout_marginTop="1dp"
-        android:orientation="horizontal"
-        >
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
 
         <TextView
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="30dp"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="Row"
             android:textColor="#000"
-            android:background="@drawable/ap_layout_box_small"
-            android:textSize="17sp" />
+            android:textSize="16sp"
+            android:text="ROW"
+            android:background="@drawable/ap_layout_box_small"/>
 
         <TextView
+            android:id="@+id/row"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="30dp"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="Col"
             android:textColor="#000"
-            android:background="@drawable/ap_layout_box_small"
-            android:textSize="17sp" />
+            android:textSize="16sp"
+            android:text="row"
+            android:background="@drawable/ap_layout_box_small"/>
 
         <TextView
             android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="5"
-            android:gravity="center"
-            android:text="mac"
-            android:textColor="#000"
-            android:background="@drawable/ap_layout_box_small"
-            android:textSize="17sp" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="30dp"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="level"
             android:textColor="#000"
-            android:background="@drawable/ap_layout_box_small"
-            android:textSize="17sp" />
+            android:textSize="16sp"
+            android:text="COL"
+            android:background="@drawable/ap_layout_box_small"/>
+
+        <TextView
+            android:id="@+id/col"
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="col"
+            android:background="@drawable/ap_layout_box_small"/>
     </LinearLayout>
 
-    <ScrollView
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginHorizontal="1dp"
-        android:layout_marginTop="1dp"
-        android:layout_weight="14">
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
 
-        <LinearLayout
-            android:id="@+id/DBlist"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/ap_layout_box"
-            android:orientation="vertical" />
-    </ScrollView>
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="ENTERED"
+            android:background="@drawable/ap_layout_box_small"/>
+
+        <TextView
+            android:id="@+id/entered"
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="entered"
+            android:background="@drawable/ap_layout_box_small"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="EMPTY"
+            android:background="@drawable/ap_layout_box_small"/>
+
+        <TextView
+            android:id="@+id/empty"
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="empty"
+            android:background="@drawable/ap_layout_box_small"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="TOTAL"
+            android:background="@drawable/ap_layout_box_small"/>
+
+        <TextView
+            android:id="@+id/total"
+            android:layout_width="0dp"
+            android:layout_height="30dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="#000"
+            android:textSize="16sp"
+            android:text="total"
+            android:background="@drawable/ap_layout_box_small"/>
+    </LinearLayout>
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="50dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/resetDB"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="20dp"
+            android:text="DB 리셋" />
+
+        <Button
+            android:id="@+id/emptyDB"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="20dp"
+            android:text="DB 비우기" />
+    </LinearLayout>
 </LinearLayout>

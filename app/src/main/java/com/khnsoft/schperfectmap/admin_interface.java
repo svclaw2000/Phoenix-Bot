@@ -7,13 +7,10 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Handler;
-import android.os.SystemClock;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -27,13 +24,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -50,7 +42,6 @@ import java.net.URL;
 public class admin_interface extends AppCompatActivity implements View.OnClickListener {
 
     Button record;
-    // TextView Tresult;
     String strJson;
     SharedPreferences sp;
     SharedPreferences.Editor editor;
@@ -64,7 +55,9 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
     ScrollView vScroll;
     HorizontalScrollView hScroll;
     TextView status;
+    Button viewLog;
 
+    boolean touching;
     float mx, my;
     float curX, curY;
 
@@ -82,12 +75,14 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
         sendToServer = findViewById(R.id.sendToServer);
         sendToServer.setOnClickListener(this);
 
+        viewLog = findViewById(R.id.viewLOG);
+        viewLog.setOnClickListener(this);
+
         status = findViewById(R.id.status);
         status.setBackgroundColor(Color.GRAY);
         status.setText("Waiting");
 
         sending = false;
-        // Tresult = findViewById(R.id.result);
         sp = getSharedPreferences("settings", MODE_PRIVATE);
         editor = sp.edit();
         wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
@@ -110,12 +105,26 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                     })
                     .show();
         } else {
-            checkmap();
             httpTask = new HttpAsyncTask(admin_interface.this);
             String ip = "http://" + sp.getString("ip", "");
             Log.i("@@@", "Target IP: " + ip);
             httpTask.execute(ip, "onCreate");
         }
+
+        String FILE_NAME = "Log.log";
+        File file = new File(this.getFilesDir(), FILE_NAME);
+        if (!file.exists()) {
+            try {
+                FileWriter fileWriter = new FileWriter(file);
+                BufferedWriter bw = new BufferedWriter(fileWriter);
+                bw.write("Log File\n\n");
+                bw.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        touching = false;
     }
 
     @Override
@@ -124,20 +133,29 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
             case MotionEvent.ACTION_DOWN:
                 mx = event.getX();
                 my = event.getY();
+                touching = true;
                 break;
             case MotionEvent.ACTION_MOVE:
-                curX = event.getX();
-                curY = event.getY();
-                vScroll.scrollBy((int) (mx - curX), (int) (my - curY));
-                hScroll.scrollBy((int) (mx - curX), (int) (my - curY));
-                mx = curX;
-                my = curY;
+                if (!touching) {
+                    mx = event.getX();
+                    my = event.getY();
+                    touching = true;
+                } else {
+                    curX = event.getX();
+                    curY = event.getY();
+                    vScroll.scrollBy((int) (mx - curX), (int) (my - curY));
+                    hScroll.scrollBy((int) (mx - curX), (int) (my - curY));
+                    mx = curX;
+                    my = curY;
+                    touching = true;
+                }
                 break;
             case MotionEvent.ACTION_UP:
-                curX = event.getX();
-                curY = event.getY();
+                mx = event.getX();
+                my = event.getY();
                 vScroll.scrollBy((int) (mx - curX), (int) (my - curY));
                 hScroll.scrollBy((int) (mx - curX), (int) (my - curY));
+                touching = false;
                 break;
         }
         return true;
@@ -155,17 +173,18 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                 if (!sending) {
                     sendAlert();
                 } else {
-                    Toast.makeText(admin_interface.this, "전송중인 메시지가 있습니다. 잠시 후 시도해주세요.", Toast.LENGTH_LONG);
+                    Toast.makeText(admin_interface.this, "전송중인 메시지가 있습니다. 잠시 후 시도해주세요.", Toast.LENGTH_LONG).show();
                 }
                 break;
-                //sendAlert();
             case R.id.viewDB:
                 if (DBready()) {
                     Intent intent = new Intent(this, view_db.class);
                     startActivity(intent);
                 }
                 break;
-
+            case R.id.viewLOG:
+                Intent intent = new Intent(this, view_log.class);
+                startActivity(intent);
         }
     }
 
@@ -216,10 +235,16 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
         protected void onPostExecute(String rec) {
             super.onPostExecute(rec);
             strJson = rec;
+            AddLog.add(admin_interface.this, "REC", rec);
             Log.i("@@@", "RECEIVED: " + strJson);
             ai.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    if (strJson.isEmpty()) {
+                        status.setBackgroundColor(Color.RED);
+                        status.setText("Error");
+                        return;
+                    }
                     status.setBackgroundColor(Color.GREEN);
                     status.setText("Received");
                     Handler handler = new Handler();
@@ -246,22 +271,15 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                                         editor.putString("version_location_identifier", versions.get("version_location_identifier").toString().replaceAll("\"", ""));
                                         editor.apply();
 
-                                        /******************지도 불러와서 작업***************/
                                         JsonObject map = (JsonObject) parser.parse(getmap());
                                         chkDBver(map);
-
                                     }
                                 }
                             } else if (json.getAsJsonObject("mr").get("error").toString().replaceAll("\"", "").contains("ERRORadmin1")) {
-                                /******************지도 불러와서 작업***************/
                                 JsonObject map = (JsonObject) parser.parse(getmap());
                                 chkDBver(map);
                             }
                         }
-
-                        //ai.Tresult.append(strJson);
-                        // readmap();
-                        // ai.Tresult.setText(strJson);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -338,6 +356,7 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
 
             json = jsonObject.toString();
             Log.i("@@@", "SEND: " + json);
+            AddLog.add(admin_interface.this, "SEND", json);
 
             httpCon.setRequestProperty("Accept", "application/json");
             httpCon.setRequestProperty("Content-type", "application/json");
@@ -345,7 +364,7 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
             httpCon.setDoInput(true);
 
             OutputStream os = httpCon.getOutputStream();
-            os.write(json.getBytes("euc-kr"));
+            os.write(json.getBytes("utf-8"));
             os.flush();
 
             try {
@@ -366,6 +385,8 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                         else result = "Did not work!";
                     } catch (Exception e3) {
                         e3.printStackTrace();
+                        status.setBackgroundColor(Color.RED);
+                        status.setText("Error");
                     }
                 }
             } finally {
@@ -373,6 +394,8 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
             }
         } catch (Exception e) {
             e.printStackTrace();
+            status.setBackgroundColor(Color.RED);
+            status.setText("Error");
         }
 
         sending = false;
@@ -388,18 +411,6 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
         }
         inputStream.close();
         return result;
-    }
-
-    boolean checkmap() {
-        String FILE_NAME = "map.json";
-        File file = new File(this.getFilesDir(), FILE_NAME);
-
-        if (file.exists()) {
-            return true;
-        }
-        else {
-            return false;
-        }
     }
 
     boolean savemap(String msg) {
@@ -465,17 +476,32 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
         return ret.toString();
     }
 
+    //DB의 지도 버전 확인 및 업데이트
     void chkDBver(JsonObject map) {
         String ver = sp.getString("version_map", "0.1");
         String name = "VERSION_" + ver.replaceAll("\\.", "_");
         try {
-            // SQL = "SELECT * FROM " + name;
             SQL = "SELECT * FROM " + name + " ORDER BY CAST(row_num AS INTEGER), CAST(col_num AS INTEGER)";
             Log.i("@@@", "rawQuery: " + SQL);
             Cursor out = db.rawQuery(SQL, null);
         } catch (Exception e) {
             e.printStackTrace();
             try {
+                SQL = "SELECT name FROM sqlite_master WHERE type='table' and name LIKE 'VERSION%'";
+                Log.i("@@@", "rawQuery: " + SQL);
+                Cursor c = db.rawQuery(SQL, null);
+                int recordCount;
+                if (c != null && (recordCount = c.getCount()) != 0) {
+                    for (int i=0; i<recordCount; i++) {
+                        c.moveToNext();
+                        SQL = "DROP TABLE " + c.getString(0);
+                        Log.i("@@@", "execSQL: " + SQL);
+                        db.execSQL(SQL);
+                        AddLog.add(this, "DB", "Drop DB " + c.getString(0));
+                    }
+                }
+                AddLog.add(this, "DB", "Clear all DB");
+
                 SQL = "CREATE TABLE " + name + " (" +
                         "_id INTEGER PRIMARY KEY AUTOINCREMENT," +
                         "row_num TEXT," +
@@ -484,43 +510,41 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                         "level TEXT)";
                 Log.i("@@@", "execSQL: " + SQL);
                 db.execSQL(SQL);
+                AddLog.add(this, "DB", "Create DB " + name);
 
-                Object[] tiles = map.getAsJsonObject("maps")
+                JsonObject tiles = map.getAsJsonObject("maps")
                         .getAsJsonObject("ML_3floor_bigdata")
-                        .getAsJsonObject("tile")
-                        .keySet()
-                        .toArray();
-                for (Object s : tiles) {
-                    String[] spl = s.toString().split("/");
-                    SQL = "INSERT INTO " + name + " (row_num, col_num) VALUES (\"" + spl[0] + "\",\"" + spl[1] + "\")";
-                    Log.i("@@@", "execSQL: " + SQL);
-                    db.execSQL(SQL);
+                        .getAsJsonObject("tile");
+                Object[] keys = tiles.keySet().toArray();
+
+                for (Object s : keys) {
+                    String obj = s.toString();
+                    Log.i("@@@", obj + " " + tiles.getAsJsonObject(obj).size());
+                    if (tiles.getAsJsonObject(obj).size() == 0) {
+                        String[] spl = obj.split("/");
+                        SQL = "INSERT INTO " + name + " (row_num, col_num) VALUES (\"" + spl[0] + "\",\"" + spl[1] + "\")";
+                        Log.i("@@@", "execSQL: " + SQL);
+                        db.execSQL(SQL);
+                    } else {
+                        JsonObject tile = tiles.getAsJsonObject(obj);
+                        Object[] tilekey = tile.keySet().toArray();
+                        for (Object o : tilekey) {
+                            String mac = o.toString();
+                            String[] spl = obj.split("/");
+                            String level = tile.get(mac).getAsString();
+                            SQL = String.format("INSERT INTO %s (row_num, col_num, mac, level) VALUES (\"%s\", \"%s\", \"%s\", \"%s\")",
+                                    name, spl[0], spl[1], mac, level);
+                            Log.i("@@@", "execSQL: " + SQL);
+                            db.execSQL(SQL);
+                        }
+                    }
                 }
                 Log.i("@@@", "No such table. Created table: " + name);
+                show();
             } catch (Exception e2) {
                 e2.printStackTrace();
             }
         }
-        /******************디버깅 과정 (시작)****************
-        SQL = "SELECT * FROM " + name;
-        Cursor out = db.rawQuery(SQL, null);
-        int recordCount = -1;
-        if (out != null) {
-            recordCount = out.getCount();
-            Log.i("@@@", "Record count: " + recordCount);
-            if (recordCount != 0) {
-                for (int i=0; i<recordCount; i++){
-                    out.moveToNext();
-                    String a = out.getString(0);
-                    String b = out.getString(1);
-                    String c = out.getString(2);
-                    String d = out.getString(3);
-                    String e = out.getString(4);
-                    Log.i("@@@", String.format("%s: (%s,%s) mac: %s, level: %s", a, b, c, d, e));
-                }
-            }
-        }
-        *****************디버깅 과정 (끝)*****************/
     }
 
     boolean DBready() {
@@ -563,9 +587,9 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                 LinearLayout lrow = null;
                 map_col mcol = null;
                 TextView map_item = null;
+                int tmp=0;
                 for (int i = 0; i < recordCount; i++) {
                     out.moveToNext();
-                    Log.i("@@@", row + "/" + col + "," + out.getString(1) + "/" + out.getString(2));
                     if (row.equals(out.getString(1)) && col.equals(out.getString(2))) continue;
                     if (!row.equals(out.getString(1))) {
                         mrow = new map_row(this);
@@ -573,21 +597,32 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                         lrow = findViewById(R.id.map_row);
                         int rowid = getResources().getIdentifier("lrow_" + i, "id", getApplicationContext().getPackageName());
                         lrow.setId(rowid);
+                        tmp = 0;
                     }
 
+                    while (Integer.parseInt(out.getString(2))!=tmp) {
+                        mcol = new map_col(this);
+                        lrow.addView(mcol);
+                        map_item = findViewById(R.id.cross);
+                        int colid = getResources().getIdentifier("lcol_" + i, "id", getApplicationContext().getPackageName());
+                        map_item.setId(colid);
+                        row = out.getString(1);
+                        col = out.getString(2);
+                        tmp ++;
+                    }
                     mcol = new map_col(this);
                     lrow.addView(mcol);
                     map_item = findViewById(R.id.cross);
                     int colid = getResources().getIdentifier("lcol_" + i, "id", getApplicationContext().getPackageName());
                     map_item.setId(colid);
+                    row = out.getString(1);
+                    col = out.getString(2);
                     map_item.setText(out.getString(1) + "/" + out.getString(2));
                     if (out.getString(3) == null) {
                         map_item.setBackgroundColor(Color.RED);
                     } else {
                         map_item.setBackgroundColor(Color.GREEN);
                     }
-                    row = out.getString(1);
-                    col = out.getString(2);
                     TagInfo tag = new TagInfo(row, col);
                     map_item.setTag(tag);
                     map_item.setOnClickListener(new View.OnClickListener() {
@@ -600,9 +635,46 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                             startActivity(intent);
                         }
                     });
+                    map_item.setOnLongClickListener(new View.OnLongClickListener() {
+                        @Override
+                        public boolean onLongClick(View v) {
+                            final View v2 = v;
+                            TagInfo tag = (TagInfo) v.getTag();
+                            AlertDialog.Builder builder = new AlertDialog.Builder(admin_interface.this);
+                            builder.setTitle("삭제")
+                                    .setMessage("(" + tag.row + "," + tag.col + ")에 등록된 AP 정보를 지우시겠습니까?")
+                                    .setCancelable(true)
+                                    .setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            TagInfo tag = (TagInfo) v2.getTag();
+                                            String ver = sp.getString("version_map", "0.1");
+                                            String name = "VERSION_" + ver.replaceAll("\\.", "_");
+                                            SQL = String.format("DELETE FROM %s WHERE row_num=%s and col_num=%s", name, tag.row, tag.col);
+                                            Log.i("@@@", "execSQL: " + SQL);
+                                            db.execSQL(SQL);
+                                            SQL = String.format("INSERT INTO %s (row_num, col_num) VALUES (%s, %s)", name, tag.row, tag.col);
+                                            Log.i("@@@", "execSQL: " + SQL);
+                                            db.execSQL(SQL);
+                                            AddLog.add(admin_interface.this, "DB", String.format("(%s,%s) AP info remove from %s", tag.row, tag.col, name));
+                                            show();
+                                        }
+                                    })
+                                    .setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                        }
+                                    })
+                                    .show();
+
+                            return false;
+                        }
+                    });
+                    tmp ++;
                 }
             }
         } catch (Exception e) {
+            e.printStackTrace();
             Toast.makeText(this, "DB에 AP 정보가 없습니다.", Toast.LENGTH_LONG).show();
         }
     }

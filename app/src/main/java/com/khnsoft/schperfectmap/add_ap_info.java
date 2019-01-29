@@ -107,6 +107,7 @@ public class add_ap_info extends AppCompatActivity {
                     db.execSQL(SQL);
                 }
                 Toast.makeText(add_ap_info.this, "저장되었습니다.", Toast.LENGTH_SHORT).show();
+                AddLog.add(add_ap_info.this, "DB", String.format("(%s,%s) AP info save to %s", row, col, name));
                 finish();
             }
         });
@@ -114,6 +115,13 @@ public class add_ap_info extends AppCompatActivity {
         Intent intent = getIntent();
         row_edit.setText(intent.getStringExtra("row"));
         col_edit.setText(intent.getStringExtra("col"));
+
+        if (!lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Toast.makeText(add_ap_info.this, "AP정보를 검색하기 위해 위치 서비스를 켜주십시오.", Toast.LENGTH_LONG).show();
+        } else {
+            wm.startScan();
+            count++;
+        }
     }
 
     @Override

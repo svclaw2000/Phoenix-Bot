@@ -1,7 +1,10 @@
 package com.khnsoft.schperfectmap;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
@@ -9,11 +12,14 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.net.wifi.ScanResult;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -26,7 +32,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+
+import static com.khnsoft.schperfectmap.add_ap_info.MULTIPLE_PERMISSIONS;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -50,6 +59,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Animation fab_open;
     Animation fab_close;
     Boolean isOpen;
+
+    WifiManager wm;
+    List<ScanResult> scanResult;
+    String[] permissions = new String[] {Manifest.permission.ACCESS_COARSE_LOCATION};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,6 +113,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         fab1.setOnClickListener(this);
         fab2.setOnClickListener(this);
         init();
+
+        wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+        wm.startScan();
+        Log.i("@@@", "Start Scan");
     }
 
     Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
@@ -178,6 +195,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         sm.registerListener(sensorlistener, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         sm.registerListener(sensorlistener, mMagneticField, SensorManager.SENSOR_DELAY_NORMAL);
         handler.sendEmptyMessage(0);
+
+        if (wm != null) {
+            if (!wm.isWifiEnabled() && wm.getWifiState() != WifiManager.WIFI_STATE_ENABLING) {
+                wm.setWifiEnabled(true);
+            }
+            final IntentFilter filter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
+            filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
+            registerReceiver(receiver, filter);
+        }
     }
 
     @Override
@@ -190,7 +216,33 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.i("@@@", "Preview not paused.");
         }
         handler.removeMessages(0);
+
+        unregisterReceiver(receiver);
         super.onPause();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (!checkPermissions()) finish();
+        }
+    }
+
+    boolean checkPermissions() {
+        int result;
+        List<String> listPermissionsNeeded = new ArrayList<>();
+        for (String p : permissions) {
+            result = ContextCompat.checkSelfPermission(this, p);
+            if (result != PackageManager.PERMISSION_GRANTED) {
+                listPermissionsNeeded.add(p);
+            }
+        }
+        if (!listPermissionsNeeded.isEmpty()) {
+            ActivityCompat.requestPermissions(this, listPermissionsNeeded.toArray(new String[listPermissionsNeeded.size()]), MULTIPLE_PERMISSIONS);
+            return false;
+        }
+        return true;
     }
 
     SensorEventListener sensorlistener = new SensorEventListener() {
@@ -234,6 +286,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             return false;
         }
     });
+
+    private BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            if (action != null) {
+                if (action.equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
+                    getWIFIScanResult();
+                    wm.startScan();
+                    Log.i("@@@", "Start Scan");
+                } else if (action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
+                    context.sendBroadcast(new Intent("wifi.ON_NETWORK_STATE_CHANGED"));
+                }
+            }
+        }
+    };
+
+    public void getWIFIScanResult() {
+        scanResult = wm.getScanResults();
+        Log.i("@@@", "ScanResult : " + scanResult.size());
+    }
 
     @Override
     public void onClick(View v) {

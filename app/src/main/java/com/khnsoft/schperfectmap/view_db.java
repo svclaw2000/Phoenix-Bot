@@ -9,17 +9,28 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.widget.Space;
+import android.widget.Button;
 import android.widget.TextView;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+
 public class view_db extends AppCompatActivity {
-    TextView DBname;
-    LinearLayout DBlist;
     SharedPreferences sp;
     SQLiteDatabase db;
     String SQL;
+    TextView dbname;
+    TextView row;
+    TextView col;
+    TextView entered;
+    TextView empty;
+    TextView total;
+    Button resetDB;
+    Button emptyDB;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,90 +40,231 @@ public class view_db extends AppCompatActivity {
         sp = getSharedPreferences("settings", MODE_PRIVATE);
         db = openOrCreateDatabase("MAP_DATA", MODE_PRIVATE, null);
 
-        DBname = findViewById(R.id.DBname);
-        DBlist = findViewById(R.id.DBlist);
+        String ver = sp.getString("version_map", "0.1");
+        String name = "VERSION_" + ver.replaceAll("\\.", "_");
+
+        dbname = findViewById(R.id.dbname);
+        dbname.setText(name);
+
+        row = findViewById(R.id.row);
+        col = findViewById(R.id.col);
+        entered = findViewById(R.id.entered);
+        empty = findViewById(R.id.empty);
+        total = findViewById(R.id.total);
+
         refresh();
+
+        resetDB = findViewById(R.id.resetDB);
+        resetDB.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(view_db.this);
+                builder.setTitle("DB 리셋")
+                        .setMessage("지금까지 DB의 수정사항이 모두 지워집니다. 그래도 지도파일 map.json의 데이터로 DB를 리셋하시겠습니까?")
+                        .setCancelable(true)
+                        .setPositiveButton("리셋", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                reset();
+                            }
+                        })
+                        .setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                            }
+                        })
+                        .show();
+            }
+        });
+
+        emptyDB = findViewById(R.id.emptyDB);
+        emptyDB.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(view_db.this);
+                builder.setTitle("DB 비우기")
+                        .setMessage("지금까지 DB의 수정사항을 지우고 빈 지도 DB를 생성합니다. 계속 하시겠습니까?")
+                        .setCancelable(true)
+                        .setPositiveButton("비우기", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                resetEmpty();
+                            }
+                        })
+                        .setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                            }
+                        })
+                        .show();
+            }
+        });
+    }
+
+    void reset(){
+        try {
+            String ver = sp.getString("version_map", "0.1");
+            String name = "VERSION_" + ver.replaceAll("\\.", "_");
+
+            SQL = "SELECT name FROM sqlite_master WHERE type='table' and name LIKE 'VERSION%'";
+            Log.i("@@@", "rawQuery: " + SQL);
+            Cursor c = db.rawQuery(SQL, null);
+            int recordCount;
+            if (c != null && (recordCount = c.getCount()) != 0) {
+                for (int i=0; i<recordCount; i++) {
+                    c.moveToNext();
+                    SQL = "DROP TABLE " + c.getString(0);
+                    Log.i("@@@", "execSQL: " + SQL);
+                    db.execSQL(SQL);
+                    AddLog.add(this, "DB", "Drop DB " + c.getString(0));
+                }
+            }
+            AddLog.add(this, "DB", "Clear all DB");
+
+            JsonParser parser = new JsonParser();
+            JsonObject map = (JsonObject) parser.parse(getmap());
+
+            SQL = "CREATE TABLE " + name + " (" +
+                    "_id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "row_num TEXT," +
+                    "col_num TEXT," +
+                    "mac TEXT," +
+                    "level TEXT)";
+            Log.i("@@@", "execSQL: " + SQL);
+            db.execSQL(SQL);
+
+            JsonObject tiles = map.getAsJsonObject("maps")
+                    .getAsJsonObject("ML_3floor_bigdata")
+                    .getAsJsonObject("tile");
+            Object[] keys = tiles.keySet().toArray();
+
+            for (Object s : keys) {
+                String obj = s.toString();
+                Log.i("@@@", obj + " " + tiles.getAsJsonObject(obj).size());
+                if (tiles.getAsJsonObject(obj).size() == 0) {
+                    String[] spl = obj.split("/");
+                    SQL = "INSERT INTO " + name + " (row_num, col_num) VALUES (\"" + spl[0] + "\",\"" + spl[1] + "\")";
+                    Log.i("@@@", "execSQL: " + SQL);
+                    db.execSQL(SQL);
+                } else {
+                    JsonObject tile = tiles.getAsJsonObject(obj);
+                    Object[] tilekey = tile.keySet().toArray();
+                    for (Object o : tilekey) {
+                        String mac = o.toString();
+                        String[] spl = obj.split("/");
+                        String level = tile.get(mac).getAsString();
+                        SQL = String.format("INSERT INTO %s (row_num, col_num, mac, level) VALUES (\"%s\", \"%s\", \"%s\", \"%s\")",
+                                name, spl[0], spl[1], mac, level);
+                        Log.i("@@@", "execSQL: " + SQL);
+                        db.execSQL(SQL);
+                    }
+                }
+            }
+            Log.i("@@@", "No such table. Created table: " + name);
+            AddLog.add(this, "DB", "From map.json reset DB " + name);
+            refresh();
+        } catch (Exception e2) {
+            e2.printStackTrace();
+        }
+    }
+
+    void resetEmpty(){
+        try {
+            String ver = sp.getString("version_map", "0.1");
+            String name = "VERSION_" + ver.replaceAll("\\.", "_");
+
+            SQL = "SELECT name FROM sqlite_master WHERE type='table' and name LIKE 'VERSION%'";
+            Log.i("@@@", "rawQuery: " + SQL);
+            Cursor c = db.rawQuery(SQL, null);
+            int recordCount;
+            if (c != null && (recordCount = c.getCount()) != 0) {
+                for (int i=0; i<recordCount; i++) {
+                    c.moveToNext();
+                    SQL = "DROP TABLE " + c.getString(0);
+                    Log.i("@@@", "execSQL: " + SQL);
+                    db.execSQL(SQL);
+                    AddLog.add(this, "DB", "Drop DB " + c.getString(0));
+                }
+            }
+            AddLog.add(this, "DB", "Clear all DB");
+
+            JsonParser parser = new JsonParser();
+            JsonObject map = (JsonObject) parser.parse(getmap());
+
+            SQL = "CREATE TABLE " + name + " (" +
+                    "_id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "row_num TEXT," +
+                    "col_num TEXT," +
+                    "mac TEXT," +
+                    "level TEXT)";
+            Log.i("@@@", "execSQL: " + SQL);
+            db.execSQL(SQL);
+
+            Object[] tiles = map.getAsJsonObject("maps")
+                    .getAsJsonObject("ML_3floor_bigdata")
+                    .getAsJsonObject("tile")
+                    .keySet()
+                    .toArray();
+            for (Object s : tiles) {
+                String[] spl = s.toString().split("/");
+                SQL = "INSERT INTO " + name + " (row_num, col_num) VALUES (\"" + spl[0] + "\",\"" + spl[1] + "\")";
+                Log.i("@@@", "execSQL: " + SQL);
+                db.execSQL(SQL);
+            }
+            Log.i("@@@", "No such table. Created table: " + name);
+            AddLog.add(this, "DB", "Create empty map DB " + name);
+            refresh();
+        } catch (Exception e2) {
+            e2.printStackTrace();
+        }
+    }
+
+    String getmap(){
+        String FILE_NAME = "map.json";
+        File file = new File(this.getFilesDir(), FILE_NAME);
+        StringBuffer output = new StringBuffer();
+
+        try {
+            FileReader fileReader = new FileReader(file.getAbsoluteFile());
+            BufferedReader br = new BufferedReader(fileReader);
+            String line = "";
+            while ((line = br.readLine()) != null) {
+                output.append(line + "\n");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return output.toString();
     }
 
     void refresh(){
         String ver = sp.getString("version_map", "0.1");
         String name = "VERSION_" + ver.replaceAll("\\.", "_");
-        DBname.setText(name);
-        DBlist.removeAllViews();
         SQL = "SELECT * FROM " + name + " ORDER BY CAST(row_num AS INTEGER), CAST(col_num AS INTEGER)";
-        Log.i("@@@", "rawQuery: " + SQL);
         Cursor outCursor = db.rawQuery(SQL, null);
-        if (outCursor != null && outCursor.getCount() != 0) {
-            int recordCount = outCursor.getCount();
+        int recordCount = -1;
+        int rowC = outCursor.getCount();
+        int colC = outCursor.getColumnCount();
+        int enteredC = 0;
+        int emptyC = 0;
+        int totalC = 0;
+        String x = "-1";
+        String y = "-1";
+        if (outCursor != null && (recordCount = outCursor.getCount()) != 0) {
             for (int i=0; i<recordCount; i++) {
                 outCursor.moveToNext();
-                int id = outCursor.getInt(0);
-                String row = outCursor.getString(1);
-                String col = outCursor.getString(2);
-                String mac = outCursor.getString(3);
-                String level = outCursor.getString(4);
-
-                db_item inner = new db_item(this);
-                DBlist.addView(inner);
-
-                TextView Trow = findViewById(R.id.row);
-                TextView Tcol = findViewById(R.id.col);
-                TextView Tmac = findViewById(R.id.mac);
-                TextView Tlevel = findViewById(R.id.signal);
-
-                Trow.setText(row);
-                Tcol.setText(col);
-                Tmac.setText(mac);
-                Tlevel.setText(level);
-
-                TagInfo tag = new TagInfo(row, col);
-                inner.setTag(tag);
-                inner.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        final View v2 = v;
-                        TagInfo tag = (TagInfo) v.getTag();
-                        AlertDialog.Builder builder = new AlertDialog.Builder(view_db.this);
-                        builder.setTitle("삭제")
-                                .setMessage("(" + tag.row + "," + tag.col + ")에 등록된 AP 정보를 지우시겠습니까?")
-                                .setCancelable(true)
-                                .setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        TagInfo tag = (TagInfo) v2.getTag();
-                                        String ver = sp.getString("version_map", "0.1");
-                                        String name = "VERSION_" + ver.replaceAll("\\.", "_");
-                                        SQL = String.format("DELETE FROM %s WHERE row_num=%s and col_num=%s", name, tag.row, tag.col);
-                                        Log.i("@@@", "execSQL: " + SQL);
-                                        db.execSQL(SQL);
-                                        SQL = String.format("INSERT INTO %s (row_num, col_num) VALUES (%s, %s)", name, tag.row, tag.col);
-                                        Log.i("@@@", "execSQL: " + SQL);
-                                        db.execSQL(SQL);
-                                        refresh();
-                                    }
-                                })
-                                .setNegativeButton("취소", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                    }
-                                })
-                                .show();
-
-                    }
-                });
-
-                int innerid = getResources().getIdentifier("inner_" + i, "id", getApplicationContext().getPackageName());
-                int rowid = getResources().getIdentifier("row_" + i, "id", getApplicationContext().getPackageName());
-                int colid = getResources().getIdentifier("col_" + i, "id", getApplicationContext().getPackageName());
-                int macid = getResources().getIdentifier("mac_" + i, "id", getApplicationContext().getPackageName());
-                int levelid = getResources().getIdentifier("signal_" + i, "id", getApplicationContext().getPackageName());
-
-                inner.setId(innerid);
-                Trow.setId(rowid);
-                Tcol.setId(colid);
-                Tmac.setId(macid);
-                Tlevel.setId(levelid);
+                if (x.equals(outCursor.getString(1)) && y.equals(outCursor.getString(2))) continue;
+                x = outCursor.getString(1);
+                y = outCursor.getString(2);
+                if (outCursor.getString(3) == null) emptyC++;
+                else enteredC++;
+                totalC++;
             }
         }
+        row.setText(""+rowC);
+        col.setText(""+colC);
+        entered.setText(""+enteredC);
+        empty.setText(""+emptyC);
+        total.setText(""+totalC);
     }
 }
