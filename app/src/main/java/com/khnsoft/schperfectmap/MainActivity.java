@@ -70,16 +70,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     SensorManager sm;
     Sensor mGyroSensor;
     Sensor mAcceSensor;
-    double mYaw, mPitch, mRoll;
+    double mPitch, mRoll;
+    double mAccPitch, mAccRoll;
     double timestamp;
+    double temp;
+    float a = 0.2f;
     double dt;
-    double RAD2DGR = 180 / Math.PI;
+    double RAD2DGR = 180.0 / Math.PI;
     static final float NS2S = 1.0f/1000000000.0f;
     TextView yaw;
     TextView pitch;
     TextView roll;
     boolean gyroRunning = false;
     boolean acceRunning = false;
+    float[] mGyroValues = new float[3];
+    float[] mAcceValues = new float[3];
 
     SharedPreferences sp;
     SharedPreferences.Editor editor;
@@ -164,7 +169,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
         wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
-        wm.startScan();
+        //wm.startScan();
         // Log.i("@@@", "Start Scan");
 
         if (!checkPermissions()) finish();
@@ -348,16 +353,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     SensorEventListener sensorlistener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            double gyroX = event.values[0];
-            double gyroY = event.values[1];
-            double gyroZ = event.values[2];
-            dt = (event.timestamp - timestamp) * NS2S;
-            timestamp = event.timestamp;
+            switch (event.sensor.getType()) {
+                case Sensor.TYPE_GYROSCOPE:
+                    mGyroValues = event.values;
+                    if (!gyroRunning) {
+                        gyroRunning = true;
+                    }
+                    break;
 
-            if (dt - timestamp*NS2S != 0) {
-                mPitch = mPitch + gyroY*dt;
-                mRoll = mRoll + gyroX*dt;
-                mYaw = mYaw + gyroZ*dt;
+                    case Sensor.TYPE_ACCELEROMETER:
+                        mAcceValues = event.values;
+                        if (!acceRunning) {
+                            acceRunning = true;
+                        }
+                        break;
+            }
+
+            if (gyroRunning && acceRunning){
+                complementaty(event.timestamp);
             }
         }
 
@@ -366,21 +379,32 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     };
 
+    void complementaty(double new_ts) {
+        gyroRunning = false;
+        acceRunning = false;
+
+        if (timestamp == 0) {
+            timestamp = new_ts;
+            return;
+        }
+        dt = (new_ts - timestamp) * NS2S;
+        timestamp = new_ts;
+
+        mAccPitch = -Math.atan2(mAcceValues[0], mAcceValues[2]) * RAD2DGR;
+        mAccRoll = Math.atan2(mAcceValues[1], mAcceValues[2]) * RAD2DGR;
+
+        temp = (1/a) * (mAccPitch - mPitch) + mGyroValues[1];
+        mPitch = mPitch + (temp*dt);
+
+        temp = (1/a) * (mAccRoll - mRoll) + mGyroValues[0];
+        mRoll = mRoll + (temp*dt);
+    }
+
     Handler handler = new Handler(new Handler.Callback() {
         @Override
         public boolean handleMessage(Message msg) {
-            double outYaw = mYaw*RAD2DGR;
-            double outRoll = mRoll*RAD2DGR;
-            double outPitch = mPitch*RAD2DGR;
-            while (outYaw < 0) outYaw = outYaw + 360;
-            while (outYaw > 360) outYaw = outYaw - 360;
-            while (outRoll < 0) outRoll = outRoll + 360;
-            while (outRoll > 360) outRoll = outRoll - 360;
-            while (outPitch < 0) outPitch = outPitch + 360;
-            while (outPitch > 360) outPitch = outPitch - 360;
-            yaw.setText(String.format("%.2f", outYaw));
-            pitch.setText(String.format("%.2f", outPitch));
-            roll.setText(String.format("%.2f", outRoll));
+            roll.setText(""+mRoll);
+            pitch.setText(""+mPitch);
             handler.sendEmptyMessageDelayed(0, 500);
             return false;
         }
@@ -393,7 +417,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (action != null) {
                 if (action.equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
                     getWIFIScanResult();
-                    wm.startScan();
+                    //wm.startScan();
                     // Log.i("@@@", "Start Scan");
                 } else if (action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
                     context.sendBroadcast(new Intent("wifi.ON_NETWORK_STATE_CHANGED"));
