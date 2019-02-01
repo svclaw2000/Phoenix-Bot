@@ -22,40 +22,14 @@
             android:layout_height="0dp"
             android:layout_weight="18" />
 
-        <LinearLayout
-            android:id="@+id/sensorName"
+        <TextView
+            android:id="@+id/result"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:orientation="horizontal"
             android:layout_weight="1"
-            android:weightSum="3"
-            android:visibility="invisible"
-            android:background="#FFF">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:background="@drawable/ap_layout_box_white"
-                android:text="Azimut" />
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:background="@drawable/ap_layout_box_white"
-                android:text="Pitch" />
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:background="@drawable/ap_layout_box_white"
-                android:text="Roll" />
-        </LinearLayout>
+            android:gravity="center"
+            android:background="@drawable/ap_layout_box_white"
+            android:text="Result" />
 
         <LinearLayout
             android:id="@+id/sensorValue"
@@ -68,7 +42,7 @@
             android:background="#FFF">
 
             <TextView
-                android:id="@+id/azimut"
+                android:id="@+id/yaw"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
@@ -114,7 +88,6 @@
         android:layout_gravity="top|end"
         android:layout_marginEnd="16dp"
         android:layout_marginTop="70dp"
-        android:backgroundTint="#beffd0"
         android:tint="#000"
         app:backgroundTint="#8affaa"
         android:visibility="invisible"
@@ -127,7 +100,6 @@
         android:layout_gravity="top|end"
         android:layout_marginTop="120dp"
         android:layout_marginEnd="16dp"
-        android:backgroundTint="#beffd0"
         android:clickable="true"
         android:tint="#000"
         android:visibility="invisible"

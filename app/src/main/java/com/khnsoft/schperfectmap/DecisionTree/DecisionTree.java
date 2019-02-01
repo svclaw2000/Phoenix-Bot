@@ -22,9 +22,9 @@
 
 package com.khnsoft.schperfectmap.DecisionTree;
 
-import java.util.*;
+import android.util.Log;
 
-// import Utils.// OutputManager;
+import java.util.*;
 
 
 /**
@@ -68,13 +68,15 @@ public class DecisionTree {
 		this.goalAttribute = goalAttribute;
 	}
 	
-	/** attributes �� ���� expression ���� */
+	public String getExpressionOfGoalAttribute()
+	{		
+		return goalAttribute.getExpression();
+	}
 	public String getExpressionOfAttributes()
 	{		
 		return attributeSet.getExpression();
 	}
 	
-	/** expression �� ����, attribute set �� ���� */
 	public void setAttributeSetByExpression( String oExp )
 	{
 		attributeSet = new AttributeSet( null );
@@ -90,7 +92,8 @@ public class DecisionTree {
 			// IdSymbolicAttribute
 			if( nType == 0 )
 			{
-				oNewAtt = new IdSymbolicAttribute( aoSplit[ nCt ] );
+				int nbValues = Integer.valueOf(aoSplit2[2]).intValue();
+				oNewAtt = new IdSymbolicAttribute( aoSplit[ nCt ], nbValues );
 			}
 			// NumericalAttribute
 			else if( nType == 1 )
@@ -100,7 +103,9 @@ public class DecisionTree {
 			// IdSymbolicAttribute
 			else
 			{
-				oNewAtt = new SymbolicAttribute( aoSplit[ nCt ] );
+				String attName = aoSplit2[1];
+				int nbValues = Integer.valueOf(aoSplit2[2]).intValue();
+				oNewAtt = new SymbolicAttribute(attName, nbValues);
 			}
 			
 			attributeSet.add( oNewAtt );
@@ -110,7 +115,6 @@ public class DecisionTree {
 	}
 	
 
-	/** private �Լ��μ�, Dot �������� ǥ���� tree string���κ���, attribute set�� �����Ͽ� ���� */
 	private AttributeSet loadAttributeSet( String oDotTree )
 	{
 		//AttributeSet oRet = new AttributeSet( null );
@@ -118,13 +122,12 @@ public class DecisionTree {
 
 		String oLine = "";
 		String [] aoSplit = oDotTree.split( "\n" );
-		int nCt, nCtMax = aoSplit.length;
+		int nCt;
 
 		String oLeafSymbolName = null;
 		Vector<String> oLeafSymbolVoca = null;
 
-		// �� ���ٰ� �� �Ʒ����� skip
-		for( nCt = 1; nCt < nCtMax - 1; ++nCt )
+		for( nCt = 1; nCt < aoSplit.length - 1; ++nCt )
 		{
 			oLine = aoSplit[ nCt ].trim();
 
@@ -135,24 +138,19 @@ public class DecisionTree {
 			String oNodeName = oLine.substring( nTemp2 + 2, nTemp + 1 );
 			String oNodeType = oLine.substring( nTemp3 + 2, nTemp2 + 1 );
 
-			// tree������ edge ������ ���,
 			if( oLine.contains( "->" ) == true )
 			{
-				// �ƹ��͵� �� �Ѵ�.
 			}
-			// tree�� node ������ ���,
 			else
 			{
 				String oTempLine = oLine.substring( nTemp + 11 );
 
-				// Leaf node�� ���,
 				if( oNodeType.compareTo( "LeafNode" ) == 0 )
 				{
 					nTemp = oTempLine.indexOf( "[" );
 					nTemp2 = oTempLine.indexOf( "]" );        
 					String oSymbols = oTempLine.substring( nTemp + 1, nTemp2 ).trim();
 
-					// symbol ���� ����
 					String [] aoSyms = oSymbols.split( " " );
 					int [] anSyms = new int[ aoSyms.length ];
 					int nTotalSym = aoSyms.length;
@@ -168,15 +166,13 @@ public class DecisionTree {
 					{
 						if( nTotalSym != oLeafSymbolVoca.size() )
 						{
-							// OutputManager.Error( "loadAttributeSet() : Something wrong!(inconsistent # of symbols)" );
+							System.out.println( "loadAttributeSet() : Something wrong!(inconsistent # of symbols)" );
 							return null;
 						}
 					}
 
-					// attribute "�̸�" ����
 					oLeafSymbolName = oTempLine.substring( 0, nTemp );
 
-					// attribute "value" ����
 					int nTemp4 = oTempLine.indexOf( "-" );
 					int nTemp5 = oTempLine.substring( nTemp4 + 2 ).indexOf( " " );
 					String oAttValue = oTempLine.substring( nTemp4 + 2  ).substring( 0, nTemp5 );
@@ -195,46 +191,34 @@ public class DecisionTree {
 					}    
 
 				}
-				// ScoreTest node�� ���,
-				// (score, weight, test)�� �����Ͽ� ScoreTestNode�� �����ؾ� �Ѵ�.
 				else
 				{
-					// numerical attribute������ üũ
 					nTemp3 = oTempLine.indexOf( "<" );
 					if( nTemp3 < 0 )
 					{
 						nTemp3 = oTempLine.indexOf( ">" );        			      			       			
 					}
 
-					// Numerical attribute�� �ƴ� ���,
 					if( nTemp3 < 0 )
 					{
 						nTemp = oTempLine.indexOf( "[" );
 						nTemp2 = oTempLine.indexOf( "]" );        
 						String oSymbols = oTempLine.substring( nTemp + 1, nTemp2 ).trim();
 
-						// symbol�� ���� �� �� ���,
 						if( oSymbols.contains( " "  ) == true )
 						{
-							// �ϴ�, ������.
 						}
-						// symbol�� boolean (yes/no)�� ���,
 						else
 						{
-							// symbol ���� ����
 							int nTotalSym = 1;
 
-							// attribute �̸� ����
 							int nTemp4 = oTempLine.indexOf( " " );
 							String oAttName = oTempLine.substring( 0, nTemp4 + 1 );
 							oAttName = oAttName.trim();
 
-							// symbol �迭 ����
 							KnownSymbolicValue [] values = new KnownSymbolicValue[ nTotalSym ];
 							values[ 0 ] = new KnownSymbolicValue( 0 );
 
-							// ����� symbol��, attribute�� "ù ��°" ���� label�̹Ƿ�,
-							// yes/no ������ ���� ������ �����Ѵ�.
 							String oS1, oS2;
 							if( oSymbols.compareTo( "yes" ) == 0 )
 							{
@@ -250,14 +234,12 @@ public class DecisionTree {
 							oAttributeVocas.add( oS1 );
 							oAttributeVocas.add( oS2 );
 
-							// Attribute  ����
 							IdSymbolicAttribute oIDSA = new IdSymbolicAttribute( oAttName, oAttributeVocas );
-							// ������ attribute�� ���ݲ� ����� �͵���� �ٸ� unique�� ���̸�, attribute set�� �߰���Ŵ.
 							
 							int nIdx = oRet.indexOfName( oAttName );
 							if( nIdx < 0 )
 							{
-								// OutputManager.Error( "loadAttributeSet() : What a fuck." );
+								System.out.println( "loadAttributeSet() : What a fuck." );
 //								oRet.add( oIDSA );
 								return null;
 							}            			
@@ -270,15 +252,12 @@ public class DecisionTree {
 
 
 					}
-					// Numerical attribute �� ���,
 					else
 					{
 						nTemp = oTempLine.indexOf( "<" );
 						String oAttName = oTempLine.substring( 0, nTemp - 1 ).trim();
 
-						// Attribute  ����
 						NumericalAttribute oNA = new NumericalAttribute( oAttName );
-						// ������ attribute�� ���ݲ� ����� �͵���� �ٸ� unique�� ���̸�, attribute set�� �߰���Ŵ.
 						if( oRet.findByName( oAttName ) == null )
 						{
 							oRet.add( oNA );            				
@@ -292,9 +271,7 @@ public class DecisionTree {
 
 		}    	
 
-		// Leaf ����� Attribute  ���� (��, goal attribute)
 		IdSymbolicAttribute oIDSA = new IdSymbolicAttribute( oLeafSymbolName, oLeafSymbolVoca );
-		// ������ attribute�� ���ݲ� ����� �͵���� �ٸ� unique�� ���̸�, attribute set�� �߰���Ŵ.
 		if( oRet.findByName( oLeafSymbolName ) == null )
 		{
 			oRet.add( oIDSA );            				
@@ -304,8 +281,6 @@ public class DecisionTree {
 		return oRet;
 	}
 	
-	/** Dot �������� ǥ���� tree string���κ���, ScoreTestNode���� ���͸� �����Ͽ� ����.
-	 	Ư��, root node�� ScoreTestNode�� anchor �ٷ� �ؿ� �߰������ش�.  */
 	private Vector<ScoreTestNode> loadScoreTestNodeSet( String oDotTree )
 	{
 		Vector<ScoreTestNode> oRet = new Vector<ScoreTestNode>();
@@ -314,7 +289,6 @@ public class DecisionTree {
 		String [] aoSplit = oDotTree.split( "\n" );
 		int nCt, nCtMax = aoSplit.length;
 
-		// �� ���ٰ� �� �Ʒ����� skip
 		for( nCt = 1; nCt < nCtMax - 1; ++nCt )
 		{
 			oLine = aoSplit[ nCt ].trim();
@@ -326,79 +300,58 @@ public class DecisionTree {
 			String oNodeName = oLine.substring( nTemp2 + 2, nTemp + 1 );
 			String oNodeType = oLine.substring( nTemp3 + 2, nTemp2 + 1 );
 
-			// tree������ edge ������ ���,
 			if( oLine.contains( "->" ) == true )
 			{
-				// �ƹ��͵� ����.
 			}
-			// tree�� node ������ ���,
 			else
 			{
 				String oTempLine = oLine.substring( nTemp + 11 );   	
 
-				// node�� "Weight" ���� ����.
 				int nWeightIdx1 = oTempLine.indexOf( "Weight = " );
 				int nWeightIdx2 = oTempLine.substring( nWeightIdx1 + 9 ).indexOf( "\"" );
 				double lfNodeWeight = Integer.valueOf( oTempLine.substring( nWeightIdx1 + 9, nWeightIdx1 + 9 + nWeightIdx2 ) );
 
-				// Leaf node�� ���,
-				// (weight)�� �ʿ��ϴ�.
 				if( oNodeType.compareTo( "LeafNode" ) == 0 )
 				{
-					// �ƹ��͵� �� ��.
 				}
-				// ScoreTest node�� ���,
-				// (score, weight, test)�� �����Ͽ� ScoreTestNode�� �����ؾ� �Ѵ�.
 				else
 				{
-					// node�� "score" ���� ����.
 					int nScoreIdx1 = oTempLine.indexOf( "score= " );
 					int nScoreIdx2 = oTempLine.substring( nScoreIdx1 + 7 ).indexOf( ")" );        			
 					double lfNodeScore = Double.valueOf( oTempLine.substring( nScoreIdx1 + 7, nScoreIdx1 + 7 + nScoreIdx2 ) );
 
-					// numerical attribute������ üũ
 					nTemp3 = oTempLine.indexOf( "<" );
 					if( nTemp3 < 0 )
 					{
 						nTemp3 = oTempLine.indexOf( ">" );        			      			       			
 					}
 
-					// Numerical attribute�� �ƴ� ���,
 					if( nTemp3 < 0 )
 					{
 						nTemp = oTempLine.indexOf( "[" );
 						nTemp2 = oTempLine.indexOf( "]" );        
 						String oSymbols = oTempLine.substring( nTemp + 1, nTemp2 ).trim();
 
-						// symbol�� ���� �� �� ���,
 						if( oSymbols.contains( " "  ) == true )
 						{
-							// ó�� ����. ����.
 						}
-						// symbol�� boolean (yes/no)�� ���,
 						else
 						{
-							// symbol ���� ����
 							int nTotalSym = 1;
 
-							// attribute �̸� ����
 							int nTemp4 = oTempLine.indexOf( " " );
 							String oAttName = oTempLine.substring( 0, nTemp4 + 1 );
 							oAttName = oAttName.trim();
 
-							// �ش� attribute ����
 							IdSymbolicAttribute oIDSA = (IdSymbolicAttribute)attributeSet.findByName( oAttName );
 
-							// symbol �迭 ����
 							KnownSymbolicValue [] values = new KnownSymbolicValue[ nTotalSym ];
 							values[ 0 ] = new KnownSymbolicValue( 0 );
 
-							// ScoreTestNode ����!
 							ScoreTestNode oSTN = new ScoreTestNode( lfNodeWeight, new SymbolicTest( oIDSA, values ), lfNodeScore );
 							oSTN.m_oNickName = oNodeName;
 							oSTN.setHasOpenNode( false );
 
-							// root ����� ����� ���, anchor �ؿ� �߰�
 							if( nCt == 1 )
 							{
 								oSTN.setFather( anchor );
@@ -409,7 +362,6 @@ public class DecisionTree {
 						}
 						
 					}
-					// Numerical attribute �� ���,
 					else
 					{
 						int nTemp4 = oTempLine.indexOf( "<" );
@@ -418,15 +370,12 @@ public class DecisionTree {
 						String oAttValue = oTempLine.substring( nTemp4 + 1, nTemp4 + nTemp5 + 2 ).trim();
 						double lfAttValue = Double.valueOf( oAttValue );
 
-						// Attribute  ���
 						NumericalAttribute oNA = (NumericalAttribute)attributeSet.findByName( oAttName );
 
-						// ScoreTestNode ����!
 						ScoreTestNode oSTN = new ScoreTestNode( lfNodeWeight, new NumericalTest( oNA, lfAttValue ), lfNodeScore );
 						oSTN.m_oNickName = oNodeName;
 						oSTN.setHasOpenNode( false );
 
-						// root ����� ����� ���, anchor �ؿ� �߰�
 						if( nCt == 1 )
 						{
 							oSTN.setFather( anchor );
@@ -438,15 +387,14 @@ public class DecisionTree {
 
 				}
 
-			}    // tree �� edge�� ���� node�� ��츦 ��� ����ߴ� if��.
+			}
 
-		}  // ��ü for��.    	
+		}
 		
 		return oRet;
 		
 	}
 	
-	/** Dot �������� ǥ���� tree string���κ���, LeafNode���� ���͸� �����Ͽ� ����. */
 private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 {
 	Vector<LeafNode> oRet = new Vector<LeafNode>();
@@ -455,7 +403,6 @@ private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 	String [] aoSplit = oDotTree.split( "\n" );
 	int nCt, nCtMax = aoSplit.length;
 
-	// �� ���ٰ� �� �Ʒ����� skip
 	for( nCt = 1; nCt < nCtMax - 1; ++nCt )
 	{
 		oLine = aoSplit[ nCt ].trim();
@@ -467,38 +414,29 @@ private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 		String oNodeName = oLine.substring( nTemp2 + 2, nTemp + 1 );
 		String oNodeType = oLine.substring( nTemp3 + 2, nTemp2 + 1 );
 
-		// tree������ edge ������ ���,
 		if( oLine.contains( "->" ) == true )
 		{
-			// �ƹ��͵� ����.
 		}
-		// tree�� node ������ ���,
 		else
 		{
 			String oTempLine = oLine.substring( nTemp + 11 );   	
 
-			// node�� "Weight" ���� ����.
 			int nWeightIdx1 = oTempLine.indexOf( "Weight = " );
 			int nWeightIdx2 = oTempLine.substring( nWeightIdx1 + 9 ).indexOf( "\"" );
 			double lfNodeWeight = Integer.valueOf( oTempLine.substring( nWeightIdx1 + 9, nWeightIdx1 + 9 + nWeightIdx2 ) );
 
-			// Leaf node�� ���,
-			// (weight)�� �ʿ��ϴ�.
 			if( oNodeType.compareTo( "LeafNode" ) == 0 )
 			{
 				nTemp = oTempLine.indexOf( "[" );
 				nTemp2 = oTempLine.indexOf( "]" );        
 				String oSymbols = oTempLine.substring( nTemp + 1, nTemp2 ).trim();
 
-				// symbol ���� ����
 				String [] aoSyms = oSymbols.split( " " );
 				double [] alfSyms = new double[ aoSyms.length ];
 				int nTotalSym = aoSyms.length;
 				
-				// attribute "�̸�" ����
 				String oLeafSymbolName = oTempLine.substring( 0, nTemp );
 
-				// attribute "value" ����
 				int nTemp4 = oTempLine.indexOf( "-" );
 				int nTemp5 = oTempLine.substring( nTemp4 + 2 ).indexOf( " " );
 				String oAttValue = oTempLine.substring( nTemp4 + 2  ).substring( 0, nTemp5 );
@@ -523,22 +461,20 @@ private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 				oRet.add( oNewLeafNode );
 			}		
 
-		}    // tree �� edge�� ���� node�� ��츦 ��� ����ߴ� if��.
+		} 
 
-	}  // ��ü for��.    	
+	}
 	
 	return oRet;
 	
 }
 	
-	/** Dot �������� ǥ���� tree string���κ���, edge���� load�Ͽ�  tree ���� */
 	private void loadEdgeSet( String oDotTree, Vector<ScoreTestNode> oScoreTestNodeSet, Vector<LeafNode> oLeafNodeSet )
 	{
 		String oLine = "";
 		String [] aoSplit = oDotTree.split( "\n" );
 		int nCt, nCtMax = aoSplit.length;
 
-		// �� ���ٰ� �� �Ʒ����� skip
 		for( nCt = 1; nCt < nCtMax - 1; ++nCt )
 		{
 			oLine = aoSplit[ nCt ].trim();
@@ -550,7 +486,6 @@ private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 			String oNodeName = oLine.substring( nTemp2 + 2, nTemp + 1 ).trim();
 			String oNodeType = oLine.substring( nTemp3 + 2, nTemp2 + 1 ).trim();
 
-			// tree������ edge ������ ���,
 			if( oLine.contains( "->" ) == true )
 			{
 				String oTempLine = oLine.substring( oLine.indexOf( "->" ) + 4 );
@@ -566,7 +501,6 @@ private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 				ScoreTestNode oToSTN = null;
 				LeafNode oToLeaf = null;
 				
-				// �θ� ��带 ����.(�θ� ���� ������ ScoreTestNode �̴�)
 				int nCt1, nCt1Max = oScoreTestNodeSet.size();
 				for( nCt1 = 0; nCt1 < nCt1Max; ++nCt1 )
 				{
@@ -576,7 +510,6 @@ private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 					}
 				}
 				
-				// �ڽ� ��尡 leaf ����̸�,
 				if( oSonType.compareTo( "LeafNode" ) == 0 )
 				{
 					nCt1Max = oLeafNodeSet.size();
@@ -588,7 +521,6 @@ private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 						}
 					}
 				}
-				// �ڽ� ��尡 leaf ��尡 �ƴϸ�,
 				else
 				{
 					nCt1Max = oScoreTestNodeSet.size();
@@ -635,12 +567,11 @@ private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 				}
 				
 				
-			}		// edge ����ϴ� if��.	
+			}
 
-		}  // ��ü for��.    	
+		}
 	}
 
-	/** Dot �������� ǥ���� tree string���κ��� Decision tree�� �����ϴ� ������ */
 	public DecisionTree( String oDotTree )
 	{
 		String [] aoSplit = oDotTree.split( "\n" );
@@ -661,13 +592,10 @@ private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 		oDotTree = oExpForDT;
 		
 		anchor = new AnchorNode(this);
-		// goalAttribute �� �Ʒ��� loadAttributeSet���� ������
 		goalAttribute = null;
 		attributeSet = loadAttributeSet( oDotTree );
-		
-		// ScoreTestNode ���� ���͸� ����.
+
 		Vector<ScoreTestNode> oScoreTestNodeSet = loadScoreTestNodeSet( oDotTree );
-		// LeafNode ���� ���͸� ����.
 		Vector<LeafNode> oLeafNodeSet = loadLeafNodeSet( oDotTree );
 		
 		loadEdgeSet(oDotTree, oScoreTestNodeSet, oLeafNodeSet);
@@ -699,6 +627,9 @@ private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 //		}
 	}
 
+	public void resetHash() {
+		attributeSet.resetHash();
+	}
 
 	/**
 	 * Guess goal attribute value of an item.
@@ -856,6 +787,10 @@ private Vector<LeafNode> loadLeafNodeSet( String oDotTree )
 	 **/
 	public void setGoalAttribute(SymbolicAttribute goalAttribute) {
 		this.goalAttribute = goalAttribute;
+	}
+
+	public void setGoalAttribute() {
+		goalAttribute = (SymbolicAttribute)attributeSet.attribute( attributeSet.size() - 1 );
 	}
 
 

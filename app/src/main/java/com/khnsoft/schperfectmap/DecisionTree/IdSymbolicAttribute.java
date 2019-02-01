@@ -63,19 +63,18 @@ public class IdSymbolicAttribute
     	return oRet;
     }
     
-    public IdSymbolicAttribute( String oExp ) 
+    public IdSymbolicAttribute( String oExp, int nbValues ) 
     {
-    	super( 2 );
+		super( nbValues );
     	String [] aoSplit = oExp.split( "\t" );
-    	
     	int nCt, nCtMax = aoSplit.length;
     	
     	setName( aoSplit[ 1 ].trim() );
     	
-    	ids = new Object[ nCtMax - 2 ];
-    	for( nCt = 2; nCt < nCtMax; ++nCt )
+    	ids = new Object[ nbValues ];
+    	for( nCt = 3; nCt < nCtMax; ++nCt )
     	{
-    		ids[ nCt - 2 ] = aoSplit[ nCt ].trim();
+    		ids[ nCt - 3 ] = aoSplit[ nCt ].trim();
     	}    	
     }
 
@@ -115,7 +114,10 @@ public class IdSymbolicAttribute
 	return ids[index].toString();
     }
 
-    
+	public String itemOf(int idx)
+	{
+		return this.ids[idx].toString();
+	}
    
     public Attribute copy(String name) {
 	return new IdSymbolicAttribute(name, new Vector(Arrays.asList(ids)));

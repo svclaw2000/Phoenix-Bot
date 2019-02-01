@@ -54,14 +54,15 @@ public class SymbolicAttribute
     	return oRet;
     }
     
+	/*
     public SymbolicAttribute(String oExp) 
     {
-    	super(null);
     	String [] aoSplit = oExp.split( "\t" );
     	this.setName( aoSplit[ 1 ].trim() );
     	nbValues = Integer.valueOf( aoSplit[ 2 ].trim() ).intValue();    	
+		this.nbValues = nbValues;
     }
-    
+    */
     
     /**
      * Builds a new named symbolic attribute.
@@ -79,7 +80,7 @@ public class SymbolicAttribute
 					       "strictly positive");
 	    this.nbValues = nbValues;
     }
-    
+
     public Attribute copy(String name) {
 	return new SymbolicAttribute(name, nbValues);
     }

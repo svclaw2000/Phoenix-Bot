@@ -66,12 +66,18 @@ public class AttributeSet {
 	 *         0 <= index < size().
 	 **/
 	public int indexOf(Attribute attribute) {
-		Integer index = (Integer) attributesHash.get(attribute);
+		Integer index = (Integer) attributesHash.get(attribute.name()); //attribute);
 
-		if (index == null)
+		if (index == null) {
+			System.out.println(attribute.name());
 			throw new IllegalArgumentException("Unknown attribute");
+		}
 
 		return index.intValue();
+	}
+
+	public int indexOf(String attrName) {
+		return (Integer)attributesHash.get(attrName);
 	}
 
 
@@ -112,7 +118,8 @@ public class AttributeSet {
 		if (attribute == null)
 			throw new IllegalArgumentException("Invalid 'null' attribute");
 
-		return (attributesHash.get(attribute) != null);
+		//return (attributesHash.get(attribute) != null);
+		return (attributesHash.get(attribute.name()) != null);
 	}
 
 
@@ -184,16 +191,36 @@ public class AttributeSet {
 		return attributes.size();
 	}
 
+	public void resetHash() {
+		attributesHash = new Hashtable();
+		int index = 0;
+		for(Attribute a : attributes) {
+			System.out.println("더한다 " + a.name() + "," + index);
+			Object oldValue = attributesHash.put(
+					a.name(), 
+					new Integer(index));
+			if (oldValue != null) {
+				attributesHash.put(
+						a.name(),
+						oldValue); 
+				throw new IllegalArgumentException("Attribute already present");
+			}
+			index += 1;
+		}
+	}
 
 	/* Adds an attribute to the set */
 	public void add(Attribute attribute) {
 		if (attribute == null)
 			throw new IllegalArgumentException("Invalid 'null' attribute");
 
-		Object oldValue = attributesHash.put(attribute, 
+		Object oldValue = attributesHash.put(
+				attribute.name(), //attribute, 
 				new Integer(attributes.size()));
 		if (oldValue != null) {
-			attributesHash.put(attribute, oldValue); 
+			attributesHash.put(
+					attribute.name(), //attribute, 
+					oldValue); 
 			throw new IllegalArgumentException("Attribute already present");
 		}
 

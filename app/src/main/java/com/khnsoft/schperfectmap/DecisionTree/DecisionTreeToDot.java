@@ -61,7 +61,10 @@ public class DecisionTreeToDot {
 	
 	public String jys_produce()
 	{
-		String s = tree.getExpressionOfAttributes() + header;
+		String s = 
+			//tree.getExpressionOfGoalAttribute() +
+			tree.getExpressionOfAttributes() +
+			header;
 
 		Iterator nodesIterator = tree.breadthFirstIterator();
 		while (nodesIterator.hasNext()) {
@@ -110,11 +113,6 @@ public class DecisionTreeToDot {
 		{
 			label += ((TestNode) node).test().toString();
 			
-//			if( node.isRoot() == true )
-//			{
-//				label += "\n����\n";
-//			}
-
 			if (node instanceof ScoreTestNode)
 				label += " (score= " + 
 						formatter.format(((ScoreTestNode) node).getScore()) +")";
@@ -163,11 +161,6 @@ public class DecisionTreeToDot {
 		{
 			label += ((TestNode) node).test().toString();
 			
-//			if( node.isRoot() == true )
-//			{
-//				label += "\n����\n";
-//			}
-
 			if (node instanceof ScoreTestNode)
 				label += " (score= " + 
 						formatter.format(((ScoreTestNode) node).getScore()) +")";

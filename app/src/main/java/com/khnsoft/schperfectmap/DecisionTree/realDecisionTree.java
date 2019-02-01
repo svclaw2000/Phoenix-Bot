@@ -3,7 +3,6 @@ package com.khnsoft.schperfectmap.DecisionTree;
 import java.io.FileReader;
 import java.util.Vector;
 
-// import Utils.OutputManager;
 
 /** DecisionTree �� ���� interface ������ ����� Ŭ���� */
 public class realDecisionTree 
@@ -45,6 +44,8 @@ public class realDecisionTree
 	/** Decision Tree ��ü */
 	private DecisionTree m_oDT;
 	
+	private Vector attributesRealTime;
+	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 	
@@ -63,10 +64,13 @@ public class realDecisionTree
 		m_oTestAttributeSet = null;
 		
 		m_oDT = new DecisionTree( oDotString );
-		
+	
+		m_oDT.setGoalAttribute();
 		m_oGoalAttribute = m_oDT.getGoalAttribute();
 		
 		m_nTotalTrainingItems = m_nTotalTestItems = 0;
+
+		attributesRealTime = null;
 	}
 	
 	
@@ -89,30 +93,40 @@ public class realDecisionTree
 		m_oDT = null;
 		
 		m_nTotalTrainingItems = m_nTotalTestItems = 0;
+		attributesRealTime = null;
+	}
+
+	public IdSymbolicAttribute getGoalAttribute()
+	{
+		return (IdSymbolicAttribute)m_oGoalAttribute;
+	}
+
+	public void resetHash()
+	{
+		m_oDT.resetHash();
 	}
 	
 	/** Decision tree�� parameter���� ���� ǥ�� */
 	public void checkValidity()
 	{
 		AttributeSet oAS = m_oDT.getAttributeSet();
-		//OutputManager.Println(  "" + oAS.size());
+		System.out.println(  "" + oAS.size());
 		int nCt, nCtMax = oAS.size();
 		for( nCt = 0; nCt < nCtMax; ++nCt )
 		{
-			//OutputManager.Print( oAS.attribute( nCt ).name() + "\t" );
+			System.out.print( oAS.attribute( nCt ).name() + "\t" );
 		}
-		//OutputManager.Println( "" );
+		System.out.println();
 	}
 	
 	/** �н���/�׽�Ʈ�� Item set ��ü ���ϰ�, Attribute set ��ü�� ���Ѵ�. */
 	public void generateItemSet() throws Exception
 	{
-		//System.out.println( "여기 = " + m_oTrainingFilePath );
 		m_oTrainingSet = ItemSetReader.read( new FileReader( m_oTrainingFilePath ) );
 		
 		if( m_oTrainingSet == null )
 		{
-			//OutputManager.Error( "generateItemSet() : Training item set is not generated." );
+			System.out.println( "generateItemSet() : Training item set is not generated." );
 			return;
 		}
 		
@@ -151,6 +165,10 @@ public class realDecisionTree
 		
 		m_oTestAttributeSet = new AttributeSet( m_oTestAttributesVector );
 	}	
+
+	public int getNumberOfAttributes() {
+		return m_oTrainingAttributeSet.size();
+	}
 	
 	/** Test�� �̿�� attribute���� "�̸�"���� �����ϰ�, Test�� attribute set ��ü�� ���Ѵ�.
 	 	���⼭�� attribute "�̸�"����, training�� �����ͷ� ���� ���Ͽ� ��õǾ��ִ� ���� ����Ѵ�. */
@@ -166,6 +184,11 @@ public class realDecisionTree
 		
 		m_oTestAttributeSet = new AttributeSet( m_oTestAttributesVector );		
 	}	
+
+	public void setGoalAttribute()
+	{
+		m_oDT.setGoalAttribute();
+	}
 	
 	/** ���ڷ� ������ attribute index�� ����Ͽ�, Goal attribute ���� */ 
 	public void setGoalAttribute( int nAttributeIndex )
@@ -221,26 +244,27 @@ public class realDecisionTree
 	}
     
     /** Real-time data �̿��Ͽ� �׽�Ʈ �����ϰ�, prediction ��� ���� */
-    public int TestWithRealTimeData()
+    public String TestWithRealTimeData(Vector<String> rawAttributes, Vector<Double> rawValues) throws Exception
     {
-    	int nRet = -1;
-    	//OutputManager.Println( "#test items = " + m_nTotalTestItems );
-    	
-		for( int nCt = 0; nCt < m_nTotalTestItems; ++nCt )
-		{
-    		Item oTestItem = m_oTestSet.item( nCt );      		 
-     	    //OutputManager.Println( "#oTestItem.nbAttributes() = " + oTestItem.nbAttributes() );
+		if(attributesRealTime == null)
+			attributesRealTime = ItemSetReader.readyToRealTimeRead(m_oTrainingAttributeSet);
+
+		m_oTestSet = ItemSetReader.realTimeRead(
+				attributesRealTime,
+				rawAttributes,
+				rawValues,
+				m_oTrainingAttributeSet);
+		
+		// 맨 처음 한개만 적용
+		Item testItem = m_oTestSet.item(0);
+
+     	System.out.println( "#oTestItem.nbAttributes() = " + testItem.nbAttributes() );
     		 
-    		// Decision tree�� ����ؼ�, ���ڷ� ���� item�� ���� "���� goal attribute ��"�� ����.
-    	    KnownSymbolicValue guessedGoalAttributeValue = m_oDT.guessGoalAttribute( oTestItem );
-//    	    // ���ڷ� ���� item ����, "���� goal attribute ��"�� ����.
+    	KnownSymbolicValue guessedGoalAttributeValue = m_oDT.guessGoalAttribute( testItem );
 //    	    KnownSymbolicValue goalAttributeValue = (KnownSymbolicValue)oTestItem.valueOf( m_oTrainingAttributeSet, m_oGoalAttribute );
     		    		 
-    	    nRet = guessedGoalAttributeValue.intValue;
-    	    //OutputManager.Println( "#Predicted result = " + nRet );//+ "\t" + "#True = " + goalAttributeValue.intValue );
-		}    	
-    	
-    	return nRet;
+    	int nRet = guessedGoalAttributeValue.intValue;
+		return getGoalAttribute().itemOf(nRet);
     }
     
     /** Test data set�� �̿��Ͽ� �׽�Ʈ �����ϰ�, prediction accuracy ���� */

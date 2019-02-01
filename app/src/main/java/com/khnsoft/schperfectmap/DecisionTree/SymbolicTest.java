@@ -104,7 +104,7 @@ extends Test {
 		String s = attribute.toString() + " in [";
 
 		for (int i = 0; i < values.length; i++)
-			s += ( " " + ((SymbolicAttribute) attribute).valueToString(values[i]) ); //"����  " + values[i] + "  (" + ((SymbolicAttribute) attribute).valueToString(oV) + ")" );
+			s += ( " " + ((SymbolicAttribute) attribute).valueToString(values[i]) );
 
 		return s + " ]";
 	}

@@ -3,17 +3,22 @@ package com.khnsoft.schperfectmap;
 import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.graphics.Color;
 import android.hardware.Camera;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.net.wifi.ScanResult;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -21,6 +26,7 @@ import android.os.Message;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -30,10 +36,26 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.khnsoft.schperfectmap.DecisionTree.*;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Vector;
 
 import static com.khnsoft.schperfectmap.add_ap_info.MULTIPLE_PERMISSIONS;
 
@@ -43,16 +65,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Camera camera;
     SurfaceHolder cameraHolder;
     LinearLayout background;
-    float[] mGravity;
-    float[] mGeomagnetic;
-    float mAzimut, mPitch, mRoll;
+
+    // sensor
     SensorManager sm;
-    Sensor mAccelerometer;
-    Sensor mMagneticField;
-    TextView azimut;
+    Sensor mGyroSensor;
+    Sensor mAcceSensor;
+    double mYaw, mPitch, mRoll;
+    double timestamp;
+    double dt;
+    double RAD2DGR = 180 / Math.PI;
+    static final float NS2S = 1.0f/1000000000.0f;
+    TextView yaw;
     TextView pitch;
     TextView roll;
+    boolean gyroRunning = false;
+    boolean acceRunning = false;
+
     SharedPreferences sp;
+    SharedPreferences.Editor editor;
     FloatingActionButton fab;
     FloatingActionButton fab1;
     FloatingActionButton fab2;
@@ -62,7 +92,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     WifiManager wm;
     List<ScanResult> scanResult;
-    String[] permissions = new String[] {Manifest.permission.ACCESS_COARSE_LOCATION};
+    String[] permissions = new String[] {Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.CAMERA};
+
+    String strJson;
+    HttpAsyncTask httpTask;
+
+    realDecisionTree dTree = null;
+    Vector<String> rawAttributes;
+    Vector<Double> rawValues;
+    TextView Tres;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,21 +120,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
 
         sm = (SensorManager) getSystemService(SENSOR_SERVICE);
-        mAccelerometer = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        mMagneticField = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        azimut = findViewById(R.id.azimut);
+        yaw = findViewById(R.id.yaw);
         pitch = findViewById(R.id.pitch);
         roll = findViewById(R.id.roll);
-        mAzimut = 0;
-        mPitch = 0;
-        mRoll = 0;
+        mGyroSensor = sm.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        mAcceSensor = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+
+        Tres = findViewById(R.id.result);
 
         sp = getSharedPreferences("settings", MODE_PRIVATE);
+        editor = sp.edit();
         if (sp.getBoolean("direction", true)) {
-            findViewById(R.id.sensorName).setVisibility(View.VISIBLE);
             findViewById(R.id.sensorValue).setVisibility(View.VISIBLE);
         } else {
-            findViewById(R.id.sensorName).setVisibility(View.INVISIBLE);
             findViewById(R.id.sensorValue).setVisibility(View.INVISIBLE);
         }
 
@@ -114,9 +150,60 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         fab2.setOnClickListener(this);
         init();
 
+        String FILE_NAME = "Log.log";
+        File file = new File(this.getFilesDir(), FILE_NAME);
+        if (!file.exists()) {
+            try {
+                FileWriter fileWriter = new FileWriter(file);
+                BufferedWriter bw = new BufferedWriter(fileWriter);
+                bw.write("Log File\n\n");
+                bw.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
         wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
         wm.startScan();
-        Log.i("@@@", "Start Scan");
+        // Log.i("@@@", "Start Scan");
+
+        if (!checkPermissions()) finish();
+
+        if (chkInfo()) {
+            httpTask = new HttpAsyncTask(MainActivity.this);
+            String ip = "http://" + sp.getString("ip", "");
+            Log.i("@@@", "Target IP: " + ip);
+            httpTask.execute(ip, "onCreate");
+        }
+
+        FILE_NAME = "identifier.md";
+        file = new File(this.getFilesDir(), FILE_NAME);
+        if (file.exists()) {
+            StringBuffer output = new StringBuffer();
+
+            try {
+                FileReader fileReader = new FileReader(file.getAbsoluteFile());
+                BufferedReader br = new BufferedReader(fileReader);
+                String line = "";
+                while ((line = br.readLine()) != null) {
+                    output.append(line + "\n");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            if (!output.toString().isEmpty()) {
+                try {
+                    String tmp = output.toString();
+                    dTree = new realDecisionTree("m2", tmp);
+                    dTree.setGoalAttribute();
+                    dTree.resetHash();
+                    Log.i("@@@", "Create decision tree");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
@@ -125,16 +212,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     };
 
-    void init() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[] {Manifest.permission.CAMERA}, 0x12345);
-            init();
-        } else {
-            camera = Camera.open();
-            camera.setDisplayOrientation(90);
-            cameraHolder = preview.getHolder();
-            cameraHolder.addCallback(callback);
+    Handler starthandler = new Handler(new Handler.Callback() {
+        @Override
+        public boolean handleMessage(Message msg) {
+            try {
+                camera = Camera.open();
+                camera.setDisplayOrientation(90);
+                cameraHolder = preview.getHolder();
+                cameraHolder.addCallback(callback);
+                starthandler.removeMessages(0);
+            } catch (Exception e) {
+                e.printStackTrace();
+                starthandler.sendEmptyMessageDelayed(0, 1000);
+            }
+            return false;
         }
+    });
+
+    void init() {
+        starthandler.sendEmptyMessage(0);
     }
 
     SurfaceHolder.Callback callback = new SurfaceHolder.Callback() {
@@ -184,16 +280,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onResume() {
         super.onResume();
+        if (!chkInfo()) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("허가되지 않음")
+                    .setMessage("AP Finger Print 저장 및 전송에 필요한 계정유형, 주소, 아이디, 비밀번호 정보가 부족합니다. 환경설정에서 설정 후 다시 시도해주세요.")
+                    .setCancelable(false)
+                    .setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Intent intent = new Intent(MainActivity.this, preferences.class);
+                            startActivity(intent);
+                        }
+                    })
+                    .show();
+        }
         if (sp.getBoolean("direction", true)) {
-            findViewById(R.id.sensorName).setVisibility(View.VISIBLE);
             findViewById(R.id.sensorValue).setVisibility(View.VISIBLE);
         } else {
-            findViewById(R.id.sensorName).setVisibility(View.INVISIBLE);
             findViewById(R.id.sensorValue).setVisibility(View.INVISIBLE);
         }
         init();
-        sm.registerListener(sensorlistener, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-        sm.registerListener(sensorlistener, mMagneticField, SensorManager.SENSOR_DELAY_NORMAL);
+        sm.registerListener(sensorlistener, mGyroSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        sm.registerListener(sensorlistener, mAcceSensor, SensorManager.SENSOR_DELAY_NORMAL);
         handler.sendEmptyMessage(0);
 
         if (wm != null) {
@@ -221,14 +329,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onPause();
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        if (Build.VERSION.SDK_INT >= 23) {
-            if (!checkPermissions()) finish();
-        }
-    }
-
     boolean checkPermissions() {
         int result;
         List<String> listPermissionsNeeded = new ArrayList<>();
@@ -248,26 +348,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     SensorEventListener sensorlistener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                mGravity = event.values;
-            }
-            if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
-                mGeomagnetic = event.values;
-            }
-            if (mGravity != null && mGeomagnetic != null) {
-                float[] R = new float[9];
-                float[] I = new float[9];
-                boolean success = SensorManager.getRotationMatrix(R, I, mGravity, mGeomagnetic);
+            double gyroX = event.values[0];
+            double gyroY = event.values[1];
+            double gyroZ = event.values[2];
+            dt = (event.timestamp - timestamp) * NS2S;
+            timestamp = event.timestamp;
 
-                if (success) {
-                    float[] orientation = new float[3];
-                    SensorManager.getOrientation(R, orientation);
-                    mAzimut = (float) Math.toDegrees(orientation[0]);
-                    mPitch = (float) Math.toDegrees(orientation[1]);
-                    mRoll = (float) Math.toDegrees(orientation[2]);
-
-                    Log.i("@@@", String.format("Azimut: %f, Pitch: %f, Roll: %f", mAzimut, mPitch, mRoll));
-                }
+            if (dt - timestamp*NS2S != 0) {
+                mPitch = mPitch + gyroY*dt;
+                mRoll = mRoll + gyroX*dt;
+                mYaw = mYaw + gyroZ*dt;
             }
         }
 
@@ -279,10 +369,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Handler handler = new Handler(new Handler.Callback() {
         @Override
         public boolean handleMessage(Message msg) {
-            azimut.setText("" + mAzimut);
-            pitch.setText("" + mPitch);
-            roll.setText("" + mRoll);
-            handler.sendEmptyMessageDelayed(0, 1000);
+            double outYaw = mYaw*RAD2DGR;
+            double outRoll = mRoll*RAD2DGR;
+            double outPitch = mPitch*RAD2DGR;
+            while (outYaw < 0) outYaw = outYaw + 360;
+            while (outYaw > 360) outYaw = outYaw - 360;
+            while (outRoll < 0) outRoll = outRoll + 360;
+            while (outRoll > 360) outRoll = outRoll - 360;
+            while (outPitch < 0) outPitch = outPitch + 360;
+            while (outPitch > 360) outPitch = outPitch - 360;
+            yaw.setText(String.format("%.2f", outYaw));
+            pitch.setText(String.format("%.2f", outPitch));
+            roll.setText(String.format("%.2f", outRoll));
+            handler.sendEmptyMessageDelayed(0, 500);
             return false;
         }
     });
@@ -295,7 +394,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if (action.equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
                     getWIFIScanResult();
                     wm.startScan();
-                    Log.i("@@@", "Start Scan");
+                    // Log.i("@@@", "Start Scan");
                 } else if (action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
                     context.sendBroadcast(new Intent("wifi.ON_NETWORK_STATE_CHANGED"));
                 }
@@ -305,7 +404,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public void getWIFIScanResult() {
         scanResult = wm.getScanResults();
-        Log.i("@@@", "ScanResult : " + scanResult.size());
+        rawAttributes = new Vector<String>();
+        rawValues = new Vector<Double>();
+        if (scanResult.size()!=0) {
+            for (int i=0; i<scanResult.size(); i++) {
+                ScanResult result = scanResult.get(i);
+                rawAttributes.add(result.BSSID);
+                rawValues.add((double) result.level);
+            }
+            Log.i("@@@", "rawAttributes: " + rawAttributes.toString());
+            Log.i("@@@", "rawValues: " + rawValues.toString());
+            try {
+                String result = dTree.TestWithRealTimeData(rawAttributes, rawValues);
+                Tres.setText(result);
+            } catch (Exception e) {
+                e.printStackTrace();
+                Tres.setText("Error");
+            }
+        }
+        // Log.i("@@@", "ScanResult : " + scanResult.size());
     }
 
     @Override
@@ -345,16 +462,214 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    class HttpAsyncTask extends AsyncTask<String, Void, String> {
+        MainActivity ui;
+
+        HttpAsyncTask(MainActivity main) {
+            this.ui = main;
+        }
+
+        @Override
+        protected String doInBackground(String... str) {
+            return POST(str[0], str[1]);
+        }
+
+        @Override
+        protected void onPostExecute(String rec) {
+            super.onPostExecute(rec);
+            strJson = rec;
+            AddLog.add(MainActivity.this, "REC", rec);
+            Log.i("@@@", "RECEIVED: " + strJson);
+            ui.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        JsonParser parser = new JsonParser();
+                        JsonObject json = (JsonObject) parser.parse(strJson);
+
+                        if (json.has("mr")) {
+                            if (json.getAsJsonObject("mr").get("error").toString().replaceAll("\"", "").contains("ERRORv-")) {
+                                JsonObject versions = json.getAsJsonObject("mr").getAsJsonObject("versions");
+                                int[] ver = checkVersions(versions);
+                                Log.i("@@@", "version: " + ver[0] + ver[1] + ver[2]);
+                                if (ver[1] == 1) {
+                                    if (savemap(json.getAsJsonObject("mr").getAsJsonObject("map").toString())) {
+                                        editor.putString("version_map", versions.get("version_map").toString().replaceAll("\"", ""));
+                                        editor.apply();
+                                    }
+                                }
+                                if (ver[2] == 1) {
+                                    if (saveIdentifier(json.getAsJsonObject("mr"))) {
+                                        //editor.putString("version_location_identifier", versions.get("version_location_identifier").toString().replaceAll("\"", ""));
+                                        //editor.apply();
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+    }
+
+    String POST(String url, String mode){
+        String result = "";
+        InputStream is = null;
+
+        try {
+            URL urlCon = new URL(url);
+            HttpURLConnection httpCon = (HttpURLConnection) urlCon.openConnection();
+            String json = "";
+            WifiInfo info = wm.getConnectionInfo();
+            int ipAddress = info.getIpAddress();
+            String myip = String.format("%d.%d.%d.%d", (ipAddress & 0xff),(ipAddress >> 8 & 0xff),(ipAddress >> 16 & 0xff),(ipAddress >> 24 & 0xff));
+            JsonObject jsonObject = new JsonObject();
+            jsonObject.addProperty("requestType", sp.getString("requestType", ""));
+            jsonObject.addProperty("userID", sp.getString("userID", ""));
+            jsonObject.addProperty("passwd", sp.getString("passwd", ""));
+            // jsonObject.accumulate("IP", myip);
+            jsonObject.addProperty("version_app", getPackageManager().getPackageInfo(getPackageName(), 0).versionName);
+            jsonObject.addProperty("version_map", sp.getString("version_map", ""));
+            jsonObject.addProperty("version_location_identifier", sp.getString("version_location_identifier", "0.1"));
+
+            json = jsonObject.toString();
+            Log.i("@@@", "SEND: " + json);
+            AddLog.add(MainActivity.this, "SEND", json);
+
+            httpCon.setRequestProperty("Accept", "application/json");
+            httpCon.setRequestProperty("Content-type", "application/json");
+            httpCon.setDoOutput(true);
+            httpCon.setDoInput(true);
+
+            OutputStream os = httpCon.getOutputStream();
+            os.write(json.getBytes("utf-8"));
+            os.flush();
+
+            try {
+                is = httpCon.getInputStream();
+                if (is != null) result = convertInputStreamToString(is);
+                else result = "Did not work!";
+            } catch (Exception e) {
+                e.printStackTrace();
+                try {
+                    is = httpCon.getInputStream();
+                    if (is != null) result = convertInputStreamToString(is);
+                    else result = "Did not work!";
+                } catch (Exception e2) {
+                    e2.printStackTrace();
+                    try {
+                        is = httpCon.getInputStream();
+                        if (is != null) result = convertInputStreamToString(is);
+                        else result = "Did not work!";
+                    } catch (Exception e3) {
+                        e3.printStackTrace();
+                    }
+                }
+            } finally {
+                httpCon.disconnect();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    String convertInputStreamToString(InputStream inputStream) throws IOException {
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+        String line = "";
+        String result = "";
+        while ((line = bufferedReader.readLine()) != null) {
+            result += line;
+        }
+        inputStream.close();
+        return result;
+    }
+
     /*
-    * 리턴값은 어떻게 나올지 몰라서 일단 float[] 으로 했고, 필요하신 자료형으로 바꾸셔도 됩니다,
-    * int[] userPos : 사용자 위치 (지도의 [0]X, [1]Y 좌표)
-    * float[] userDirt : 사용자 각도 ([0]좌우각도, [1]상하각도, [2]화면회전각도)
-    *                    일단은 기기에서 구해지는 각도
-    * int[] toonPos : 캐릭터 위치 (지도의 [0]X, [1]Y 좌표)
-    * float[] toonDirt : 캐릭터 각도 ([0]좌우각도 ...) 이 부분은 정해서 알려주시면 수정하겠습니다.
-    */
+     * 리턴값은 어떻게 나올지 몰라서 일단 float[] 으로 했고, 필요하신 자료형으로 바꾸셔도 됩니다,
+     * int[] userPos : 사용자 위치 (지도의 [0]X, [1]Y 좌표)
+     * float[] userDirt : 사용자 각도 ([0]좌우각도, [1]상하각도, [2]화면회전각도)
+     *                    일단은 기기에서 구해지는 각도
+     * int[] toonPos : 캐릭터 위치 (지도의 [0]X, [1]Y 좌표)
+     * float[] toonDirt : 캐릭터 각도 ([0]좌우각도 ...) 이 부분은 정해서 알려주시면 수정하겠습니다.
+     */
     float[] toonPosition(int[] userPos, float[] userDirt, int[] toonPos, float[] toonDirt) {
 
         return null;
+    }
+
+    boolean chkInfo(){
+        if (sp.getString("requestType", "").isEmpty() || sp.getString("ip", "").isEmpty() ||
+                sp.getString("userID", "").isEmpty() || sp.getString("passwd", "").isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+
+    boolean savemap(String msg) {
+        String FILE_NAME = "map.json";
+        File file = new File(this.getFilesDir(), FILE_NAME);
+
+        try{
+            FileWriter fileWriter = new FileWriter(file.getAbsoluteFile());
+            BufferedWriter bw = new BufferedWriter(fileWriter);
+            bw.write(msg);
+            bw.close();
+            Log.i("@@@", "Saved at " + file.getPath());
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.i("@@@", "Cannot save at " + file.getPath());
+        }
+        return false;
+    }
+
+    int[] checkVersions(JsonObject vers) throws PackageManager.NameNotFoundException {
+        StringBuffer txt = new StringBuffer();
+        int[] ret = new int[3];
+        if (!vers.get("version_app").toString().replaceAll("\"", "").equals(getPackageManager().getPackageInfo(getPackageName(), 0).versionName)) {
+            txt.append("어플");
+            ret[0] = 1;
+            Log.i("@@@", "version_app: " + vers.get("version_app").toString().replaceAll("\"", "") + ", " + getPackageManager().getPackageInfo(getPackageName(), 0).versionName);
+        } else ret[0] = 0;
+        if (!vers.get("version_map").toString().replaceAll("\"", "").equals(sp.getString("version_map", ""))) {
+            if (txt.length()==0) txt.append("지도");
+            else txt.append(", 지도");
+            ret[1] = 1;
+            Log.i("@@@", "version_map: " + vers.get("version_map").toString().replaceAll("\"", "") + ", " + sp.getString("version_map", "0.1"));
+        } else ret[1] = 0;
+        if (!vers.get("version_location_identifier").toString().replaceAll("\"", "").equals(sp.getString("version_location_identifier", "0.1"))) {
+            if (txt.length()==0) txt.append("인식기");
+            else txt.append(", 인식기");
+            ret[2] = 1;
+            Log.i("@@@", "version_location_identifier: " + vers.get("version_location_identifier").toString().replaceAll("\"", "") + ", " + sp.getString("version_location_identifier", "0.1"));
+        } else ret[2] = 0;
+        if (txt.length()!=0) {
+            txt.append("의 버전이 낮습니다.");
+            Toast.makeText(this, txt, Toast.LENGTH_LONG).show();
+        }
+        return ret;
+    }
+
+    boolean saveIdentifier(JsonObject identifier){
+        String FILE_NAME = "identifier.md";
+        File file = new File(this.getFilesDir(), FILE_NAME);
+
+        try{
+            FileWriter fileWriter = new FileWriter(file.getAbsoluteFile());
+            BufferedWriter bw = new BufferedWriter(fileWriter);
+            String tmp = identifier.get("location_identifier").toString();
+            bw.write(tmp.substring(1, tmp.length()-1).replaceAll("\\\\n","\n").replaceAll("\\\\t", "\t").replaceAll("\\\\\"", "\""));
+            bw.close();
+            Log.i("@@@", "Saved at " + file.getPath());
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.i("@@@", "Cannot save at " + file.getPath());
+        }
+        return false;
     }
 }

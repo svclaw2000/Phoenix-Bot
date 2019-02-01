@@ -111,19 +111,6 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
             httpTask.execute(ip, "onCreate");
         }
 
-        String FILE_NAME = "Log.log";
-        File file = new File(this.getFilesDir(), FILE_NAME);
-        if (!file.exists()) {
-            try {
-                FileWriter fileWriter = new FileWriter(file);
-                BufferedWriter bw = new BufferedWriter(fileWriter);
-                bw.write("Log File\n\n");
-                bw.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
         touching = false;
     }
 
@@ -139,7 +126,6 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                 if (!touching) {
                     mx = event.getX();
                     my = event.getY();
-                    touching = true;
                 } else {
                     curX = event.getX();
                     curY = event.getY();
@@ -147,8 +133,8 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                     hScroll.scrollBy((int) (mx - curX), (int) (my - curY));
                     mx = curX;
                     my = curY;
-                    touching = true;
                 }
+                touching = true;
                 break;
             case MotionEvent.ACTION_UP:
                 mx = event.getX();
@@ -263,22 +249,27 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                         if (json.has("mr")) {
                             if (json.getAsJsonObject("mr").get("error").toString().replaceAll("\"", "").contains("ERRORv-")) {
                                 JsonObject versions = json.getAsJsonObject("mr").getAsJsonObject("versions");
-                                String ver = checkVersions(versions);
-                                Log.i("@@@", "version: " + ver);
-                                if (ver.equals("010")) {
+                                int[] ver = checkVersions(versions);
+                                Log.i("@@@", "version: " + ver[0] + ver[1] + ver[2]);
+                                if (ver[1] == 1) {
                                     if (savemap(json.getAsJsonObject("mr").getAsJsonObject("map").toString())) {
                                         editor.putString("version_map", versions.get("version_map").toString().replaceAll("\"", ""));
                                         editor.putString("version_location_identifier", versions.get("version_location_identifier").toString().replaceAll("\"", ""));
                                         editor.apply();
 
-                                        JsonObject map = (JsonObject) parser.parse(getmap());
-                                        chkDBver(map);
+                                        return;
                                     }
+                                }
+                                if (ver[2] == 1) {
+                                    saveIdentifier(json.getAsJsonObject("mr"));
                                 }
                             } else if (json.getAsJsonObject("mr").get("error").toString().replaceAll("\"", "").contains("ERRORadmin1")) {
                                 JsonObject map = (JsonObject) parser.parse(getmap());
                                 chkDBver(map);
                             }
+                        } else {
+                            JsonObject map = (JsonObject) parser.parse(getmap());
+                            chkDBver(map);
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -433,7 +424,7 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
 
     String getmap(){
         String FILE_NAME = "map.json";
-        File file = new File(this.getFilesDir(), FILE_NAME);
+        File file = new File(getFilesDir(), FILE_NAME);
         StringBuffer output = new StringBuffer();
 
         try {
@@ -449,31 +440,31 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
         return output.toString();
     }
 
-    String checkVersions(JsonObject vers) throws PackageManager.NameNotFoundException {
+    int[] checkVersions(JsonObject vers) throws PackageManager.NameNotFoundException {
         StringBuffer txt = new StringBuffer();
-        StringBuffer ret = new StringBuffer();
+        int[] ret = new int[3];
         if (!vers.get("version_app").toString().replaceAll("\"", "").equals(getPackageManager().getPackageInfo(getPackageName(), 0).versionName)) {
             txt.append("어플");
-            ret.append("1");
+            ret[0] = 1;
             Log.i("@@@", "version_app: " + vers.get("version_app").toString().replaceAll("\"", "") + ", " + getPackageManager().getPackageInfo(getPackageName(), 0).versionName);
-        } else ret.append("0");
+        } else ret[0] = 0;
         if (!vers.get("version_map").toString().replaceAll("\"", "").equals(sp.getString("version_map", ""))) {
             if (txt.length()==0) txt.append("지도");
             else txt.append(", 지도");
-            ret.append("1");
+            ret[1] = 1;
             Log.i("@@@", "version_map: " + vers.get("version_map").toString().replaceAll("\"", "") + ", " + sp.getString("version_map", "0.1"));
-        } else ret.append("0");
+        } else ret[1] = 0;
         if (!vers.get("version_location_identifier").toString().replaceAll("\"", "").equals(sp.getString("version_location_identifier", "0.1"))) {
             if (txt.length()==0) txt.append("인식기");
             else txt.append(", 인식기");
-            ret.append("1");
+            ret[2] = 1;
             Log.i("@@@", "version_location_identifier: " + vers.get("version_location_identifier").toString().replaceAll("\"", "") + ", " + sp.getString("version_location_identifier", "0.1"));
-        } else ret.append("0");
+        } else ret[2] = 0;
         if (txt.length()!=0) {
             txt.append("의 버전이 낮습니다.");
             Toast.makeText(this, txt, Toast.LENGTH_LONG).show();
         }
-        return ret.toString();
+        return ret;
     }
 
     //DB의 지도 버전 확인 및 업데이트
@@ -563,10 +554,10 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
 
     boolean chkInfo(){
         if (sp.getString("requestType", "").isEmpty() || sp.getString("ip", "").isEmpty() ||
-                sp.getString("userID", "").isEmpty() || sp.getString("passwd", "").isEmpty()) {
+                sp.getString("userID", "").isEmpty() || sp.getString("passwd", "").isEmpty() ||
+                sp.getString("requestType", "").equals("mr_user")) {
             return false;
         }
-
         return true;
     }
 
@@ -676,6 +667,22 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(this, "DB에 AP 정보가 없습니다.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    void saveIdentifier(JsonObject identifier){
+        String FILE_NAME = "identifier.md";
+        File file = new File(this.getFilesDir(), FILE_NAME);
+
+        try{
+            FileWriter fileWriter = new FileWriter(file.getAbsoluteFile());
+            BufferedWriter bw = new BufferedWriter(fileWriter);
+            bw.write(identifier.get("location_identifier").toString());
+            bw.close();
+            Log.i("@@@", "Saved at " + file.getPath());
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.i("@@@", "Cannot save at " + file.getPath());
         }
     }
 }

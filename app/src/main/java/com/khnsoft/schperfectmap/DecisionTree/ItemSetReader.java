@@ -26,7 +26,6 @@ package com.khnsoft.schperfectmap.DecisionTree;
 import java.io.*;
 import java.util.*;
 
-
 /**
  * This class reads a database file. <p>
  * The database format is very simple. The first line is the name of the 
@@ -101,16 +100,66 @@ public class ItemSetReader {
      */
     static public ItemSet read(Reader reader, AttributeSet attributeSet)
 	throws IOException, FileFormatException {
-	
-	StreamTokenizer st = new StreamTokenizer(reader);
-	int lineNumber = 1;
-	boolean named = false;           /* Is first column the item's name ? */
-	Vector attributes = null;
+
+	BufferedReader r = new BufferedReader(reader);
+
+	Vector attributes = new Vector();
 	Vector items = new Vector();
 
-	initSyntaxTable(st);
-	
-	
+	String rawLine = r.readLine(); // db name
+	rawLine = r.readLine(); // attrs
+	String [] lineItems = rawLine.split(" ");
+	if(lineItems.length % 2 != 0)
+		throw new FileFormatException("Invalid # of attrs");
+	for(int i = 0; i < lineItems.length; i+=2) {
+		String name = lineItems[i];
+		String attr_type = lineItems[i+1];
+
+		//System.out.println(name + "\t" + attr_type);
+
+		if (attr_type.equals("symbolic"))
+			attributes.add(new MutableAttribute(name));
+	    else if (attr_type.equals("numerical"))
+			attributes.add(new NumericalAttribute(name));
+	    else if (name.equals("object") && attr_type.equals("name") && attributes.size() == 0)
+			attributes.add(new MutableAttribute("name"));
+	    else
+			throw new FileFormatException("Attributes must be followed by" +
+					      " their type ('symbolic' or " +
+					      "'numerical')");
+	}
+
+	while (true) {
+		rawLine = r.readLine();
+		if(rawLine == null)
+			break;
+
+		AttributeValue[] values = new AttributeValue[attributes.size()];
+		int attributeNb = 0;
+		lineItems = rawLine.split(" ");
+		if(lineItems.length != values.length)
+			throw new FileFormatException("#Attribute values is not valid");
+
+		// 제일 마지막 꺼 제외하고, 모두 '숫자'로 가정
+		for(; attributeNb < lineItems.length-1; ++attributeNb) {
+			values[attributeNb] = new KnownNumericalValue(Double.valueOf(lineItems[attributeNb]));
+		}
+		// 마지막 꺼는 label 취급
+		MutableAttribute attribute =
+			(MutableAttribute) attributes.elementAt(attributeNb);
+		    
+		if(attribute.find(lineItems[attributeNb]) == -1) {
+			values[attributeNb] = 
+			    new KnownSymbolicValue(attribute.nbValues());
+			attribute.add(lineItems[attributeNb]);
+		} else 
+			values[attributeNb] =
+			    new KnownSymbolicValue(attribute.find(lineItems[attributeNb]));
+	    
+		items.add(values);
+	}
+
+	/*
 	for (st.nextToken(); st.ttype != StreamTokenizer.TT_EOF; 
 	     st.nextToken()) {
 	    
@@ -120,7 +169,7 @@ public class ItemSetReader {
 	    st.pushBack();
 
 	    if (lineNumber == 1)
-		readFirstLine(st);          /* The database name is forgotten */
+		readFirstLine(st);  
 	    else if (lineNumber == 2) {
 		attributes = readAttributesLine(st);
 	    }
@@ -132,12 +181,15 @@ public class ItemSetReader {
 	    
 	    lineNumber++;
 	}
+	*/
 	
 	ItemSet set;
 	if (attributeSet == null)
 	    set = buildItemSet(attributes, items);
 	else
 	    set = buildItemSet(attributes, attributeSet, items);
+
+	r.close();
 
 	return set;
     }
@@ -148,12 +200,14 @@ public class ItemSetReader {
 	st.resetSyntax();
 	st.parseNumbers();
 	st.whitespaceChars((int) ' ', (int) ' ');
+	//st.whitespaceChars((int)-3, (int)-3);
 	st.whitespaceChars((int) '\t', (int) '\t');
 	st.wordChars('a', 'z');
 	st.wordChars('A', 'Z');
 	st.wordChars('_', '_');
 	st.wordChars('@', '@');
 	st.wordChars('.', '.');
+	st.wordChars(':', ':');
 	st.ordinaryChar(UNKNOWN_VALUE);
 	st.eolIsSignificant(true);
 	st.commentChar((int) ';');
@@ -170,11 +224,10 @@ public class ItemSetReader {
 	}
 	
 	name = st.sval;
-	//System.out.println( "name = " + name );
 	
-	while (st.nextToken() != StreamTokenizer.TT_EOL);
-//	    throw new FileFormatException("First line must only hold one word" +
-//					  " (the database name)");
+	if (st.nextToken() != StreamTokenizer.TT_EOL)
+	    throw new FileFormatException("First line must only hold one word" +
+					  " (the database name)");
 	
 	return name;
     }
@@ -186,38 +239,54 @@ public class ItemSetReader {
 	Vector attributes = new Vector();
 	String name;
 	
-	//int nC = 0;
-	
-	for (st.nextToken(); st.ttype != StreamTokenizer.TT_EOL; 
+	int nC = 0;
+
+	/*
+	for (; st.ttype != StreamTokenizer.TT_EOL; 
 	     st.nextToken()) {
-	    st.pushBack();
+		System.out.println(nC + ": " + st.sval);
+		nC += 1;
+	}
+	*/
+	
+	for (; st.ttype != StreamTokenizer.TT_EOL; ) {
+	    //st.pushBack();
 	    
-	    //System.out.println( "캭" + nC );
-	    //nC += 1;
-	    
-	    //System.out.println( "요놈 = " + st.sval);
-	    
-	    if( st.sval == null )
-	    {
-	    	while (st.nextToken() != StreamTokenizer.TT_EOL);
-	    	break;
-	    }
-	    
-	    if (st.nextToken() != StreamTokenizer.TT_WORD)
-		throw new FileFormatException("Invalid attribute name");
+	    nC += 1;
+		
+		int nt = StreamTokenizer.TT_EOL;
+		String sval = null;
+		while (sval == null) {
+			nt = st.nextToken();
+			sval = st.sval;
+		}
 	    
 	    name = st.sval;
+		//System.out.println(name);
+
+		nt = StreamTokenizer.TT_EOL;
+		sval = null;
+		while (sval == null) {
+			nt = st.nextToken();
+			sval = st.sval;
+		}
+
+	    if (nt != StreamTokenizer.TT_WORD)
+		throw new FileFormatException("Invalid attribute name");
 	    
-	    if (st.nextToken() != StreamTokenizer.TT_WORD)
+	    if (nt != StreamTokenizer.TT_WORD)
 		throw new FileFormatException("Attribute name expected");
+
+		String attr_type = st.sval;
+
+		//System.out.println("\t" + attr_type);
 	    
-	    if (st.sval.equals("symbolic"))
-		attributes.add(new MutableAttribute(name));
-	    else if (st.sval.equals("numerical"))
-		attributes.add(new NumericalAttribute(name));
-	    else if (name.equals("object") && st.sval.equals("name") && 
-		       attributes.size() == 0)
-		attributes.add(new MutableAttribute("name"));
+	    if (attr_type.equals("symbolic"))
+			attributes.add(new MutableAttribute(name));
+	    else if (attr_type.equals("numerical"))
+			attributes.add(new NumericalAttribute(name));
+	    else if (name.equals("object") && st.sval.equals("name") && attributes.size() == 0)
+			attributes.add(new MutableAttribute("name"));
 	    else
 		throw new FileFormatException("Attributes must be followed by" +
 					      " their type ('symbolic' or " +
@@ -243,10 +312,6 @@ public class ItemSetReader {
 		 attributeNb < attributes.size(); 
 	     st.nextToken(), attributeNb++) {
 	    
-//		System.out.println( "��� -> " + st );
-		
-		System.out.println( "요기요기  = " + st.sval );
-		
 	    switch(st.ttype) {
 	    case StreamTokenizer.TT_WORD:
 		if (!(attributes.elementAt(attributeNb) instanceof
@@ -316,7 +381,67 @@ public class ItemSetReader {
 	return values;
     }
     
+	static public Vector readyToRealTimeRead(AttributeSet attributeSet)
+		throws IOException, FileFormatException
+	{
+		Vector attributes = new Vector();
+
+		for(int i = 0; i < attributeSet.size(); ++i) {
+			Attribute a = attributeSet.attribute(i);
+			String name = a.name();
+			if (a instanceof SymbolicAttribute || a instanceof IdSymbolicAttribute)
+				attributes.add(new MutableAttribute(name));
+			else if (a instanceof NumericalAttribute)
+				attributes.add(new NumericalAttribute(name));
+			else
+				throw new FileFormatException("Invalid attribute type");
+		}
+		return attributes;
+	}
     
+	static public ItemSet realTimeRead(
+			Vector realTimeAttributes, 
+			Vector<String> rawAttributes,
+			Vector<Double> rawValues, 
+			AttributeSet attributeSet)
+	throws IOException, FileFormatException {
+	
+		// 모두 '숫자'로 가정
+		AttributeValue[] values = new AttributeValue[attributeSet.size()];
+		int attributeNb = 0;
+		for(; attributeNb < values.length; ++attributeNb) {
+			values[attributeNb] = new KnownNumericalValue(0); //Double.valueOf(items[attributeNb]));
+		}
+		for(int i = 0; i < rawAttributes.size(); ++i) {
+			int aidx = attributeSet.indexOf(rawAttributes.get(i));
+			//double aval = Double.valueOf(rawValues.get(i)).doubleValue();
+			values[aidx] = new KnownNumericalValue(rawValues.get(i));
+		}
+
+		/*
+		// 마지막 꺼는 label 취급
+		attributeNb = values.length - 1;
+		MutableAttribute attribute =
+			(MutableAttribute) attributes.elementAt(attributeNb);
+		int aidx = attribute.find(items[attributeNb]);
+		if(aidx == -1) {
+			throw FileFormatException("Invalid label");
+		} else 
+			values[attributeNb] =
+			    new KnownSymbolicValue(aidx);
+	    */
+		Vector items = new Vector();
+		items.add(values);
+	
+		ItemSet set;
+		if (attributeSet == null)
+			set = buildItemSet(realTimeAttributes, items);
+		else
+			set = buildItemSet(realTimeAttributes, attributeSet, items);
+
+		return set;
+    }
+ 
     /* Matches the attributes of 'set' with the attributes of 'vector' */
     static private int[] switchArray(AttributeSet set, Vector vector) {
 	int[] switchArray = new int[set.size()];
@@ -428,4 +553,7 @@ public class ItemSetReader {
 	
 	return itemSet;
     }
+
+
+
 }

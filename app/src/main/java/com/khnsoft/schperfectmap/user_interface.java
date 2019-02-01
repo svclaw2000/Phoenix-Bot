@@ -23,6 +23,8 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.khnsoft.schperfectmap.DecisionTree.*;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -73,7 +75,6 @@ public class user_interface extends AppCompatActivity implements SurfaceHolder.C
         }
 
         init();
-        //holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
     }
 
     Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
