@@ -7,10 +7,13 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
+import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Handler;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -38,6 +41,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class admin_interface extends AppCompatActivity implements View.OnClickListener {
 
@@ -105,10 +110,12 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                     })
                     .show();
         } else {
-            httpTask = new HttpAsyncTask(admin_interface.this);
-            String ip = "http://" + sp.getString("ip", "");
-            Log.i("@@@", "Target IP: " + ip);
-            httpTask.execute(ip, "onCreate");
+            if (!sending) {
+                httpTask = new HttpAsyncTask(admin_interface.this);
+                String ip = "http://" + sp.getString("ip", "");
+                Log.i("@@@", "Target IP: " + ip);
+                httpTask.execute(ip, "onCreate");
+            }
         }
 
         touching = false;
@@ -169,9 +176,56 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                 }
                 break;
             case R.id.viewLOG:
-                Intent intent = new Intent(this, view_log.class);
-                startActivity(intent);
+                AlertDialog.Builder builder = new AlertDialog.Builder(admin_interface.this);
+                builder.setTitle("로그를 내보내거나 새로운 로그를 만드시겠습니까?")
+                        .setMessage("이메일로 로그를 내보내시겠습니까? 제거를 누르시면 이전 로그를 제거하고 새로운 로그를 생성합니다.")
+                        .setCancelable(true)
+                        .setPositiveButton("이메일", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                sendMail();
+                            }
+                        })
+                        .setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                            }
+                        })
+                        .setNeutralButton("제거", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                String FILE_NAME = "Log.log";
+                                File file = new File(getFilesDir(), FILE_NAME);
+                                try {
+                                    FileWriter fileWriter = new FileWriter(file);
+                                    BufferedWriter bw = new BufferedWriter(fileWriter);
+                                    bw.write("Log File\n\n");
+                                    bw.close();
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        })
+                        .show();
         }
+    }
+
+    void sendMail() {
+        Date date = new Date(System.currentTimeMillis());
+        SimpleDateFormat sdf = new SimpleDateFormat("yy/MM/dd HH:mm:ss");
+        String FILE_NAME = "Log.log";
+        File file = new File(getFilesDir(), FILE_NAME);
+        Intent mail = new Intent(Intent.ACTION_SEND);
+        mail.setType("plain/text");
+        Uri uri;
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) uri = FileProvider.getUriForFile(admin_interface.this, getApplicationContext().getPackageName() + ".fileprovider", file);
+        else uri = Uri.fromFile(file);
+        String[] address = {"svclaw2000@gmail.com"};
+        mail.putExtra(Intent.EXTRA_EMAIL, address);
+        mail.putExtra(Intent.EXTRA_SUBJECT, sdf.format(date) + " Log File");
+        mail.putExtra(Intent.EXTRA_STREAM, uri);
+        mail.putExtra(Intent.EXTRA_TEXT, "The Log File.");
+        startActivity(mail);
     }
 
     @Override
@@ -256,20 +310,19 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                                         editor.putString("version_map", versions.get("version_map").toString().replaceAll("\"", ""));
                                         editor.putString("version_location_identifier", versions.get("version_location_identifier").toString().replaceAll("\"", ""));
                                         editor.apply();
-
                                         return;
                                     }
                                 }
                                 if (ver[2] == 1) {
                                     saveIdentifier(json.getAsJsonObject("mr"));
                                 }
-                            } else if (json.getAsJsonObject("mr").get("error").toString().replaceAll("\"", "").contains("ERRORadmin1")) {
-                                JsonObject map = (JsonObject) parser.parse(getmap());
-                                chkDBver(map);
-                            }
-                        } else {
+                            } // else if (json.getAsJsonObject("mr").get("error").toString().replaceAll("\"", "").contains("ERRORadmin1")) { }
+                        }
+                        try {
                             JsonObject map = (JsonObject) parser.parse(getmap());
                             chkDBver(map);
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     } catch (Exception e) {
                         e.printStackTrace();

@@ -304,11 +304,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } else {
             findViewById(R.id.sensorValue).setVisibility(View.INVISIBLE);
         }
-        init();
         sm.registerListener(sensorlistener, mGyroSensor, SensorManager.SENSOR_DELAY_NORMAL);
         sm.registerListener(sensorlistener, mAcceSensor, SensorManager.SENSOR_DELAY_NORMAL);
         handler.sendEmptyMessage(0);
 
+        try{
+            camera = Camera.open();
+            camera.setDisplayOrientation(90);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         if (wm != null) {
             if (!wm.isWifiEnabled() && wm.getWifiState() != WifiManager.WIFI_STATE_ENABLING) {
                 wm.setWifiEnabled(true);
@@ -403,8 +408,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Handler handler = new Handler(new Handler.Callback() {
         @Override
         public boolean handleMessage(Message msg) {
-            roll.setText(""+mRoll);
-            pitch.setText(""+mPitch);
+            roll.setText(String.format("%.2f", mRoll));
+            pitch.setText(String.format("%.2f", mPitch));
             handler.sendEmptyMessageDelayed(0, 500);
             return false;
         }
@@ -488,7 +493,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     class HttpAsyncTask extends AsyncTask<String, Void, String> {
         MainActivity ui;
-
         HttpAsyncTask(MainActivity main) {
             this.ui = main;
         }

@@ -40,7 +40,7 @@
         <activity android:name=".db_item" />
         <activity android:name=".map_row" />
         <activity android:name=".map_col" />
-        <activity android:name=".view_log"/>
+
         <provider
             android:name="android.support.v4.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
