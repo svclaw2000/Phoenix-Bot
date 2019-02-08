@@ -50,7 +50,7 @@ public class add_ap_info extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_ap_info);
 
-        db = openOrCreateDatabase("MAP_DATA", MODE_PRIVATE, null);
+        db = openOrCreateDatabase("MAP_DATA.db", MODE_PRIVATE, null);
         sp = getSharedPreferences("settings", MODE_PRIVATE);
 
         String ver = sp.getString("version_map", "0.1");
@@ -93,16 +93,29 @@ public class add_ap_info extends AppCompatActivity {
                 SQL = String.format("SELECT row_num, col_num FROM %s WHERE row_num=\"%s\" AND col_num=\"%s\"", name, row, col);
                 Log.i("@@@", "rawQuery: " + SQL);
                 Cursor count = db.rawQuery(SQL, null);
-                if (count == null || count.getCount()==0) {
+                if (count == null || count.getCount()==0) { // 해당 타일이 존재하는지 확인
                     Toast.makeText(add_ap_info.this, "잘못된 위치를 입력했습니다. 확인 후 다시 시도해주십시오.", Toast.LENGTH_LONG).show();;
                     return;
                 }
-                SQL = String.format("DELETE FROM %s WHERE row_num=\"%s\" AND col_num=\"%s\"", name, row, col);
-                Log.i("@@@", "execSQL: " + SQL);
-                db.execSQL(SQL);
+                count.close();
+                SQL = String.format("SELECT row_num, col_num, count FROM %s WHERE row_num=\"%s\" AND col_num=\"%s\"", name, row, col);
+                Log.i("@@@", "rawQuery: " + SQL);
+                count = db.rawQuery(SQL, null);
+                int numcount = -1;
+                if (count != null && count.getCount()!=0) {
+                    for (int i=0; i<count.getCount(); i++) {
+                        count.moveToNext();
+                        if (numcount < count.getInt(2)) numcount = count.getInt(2);
+                    }
+                }
+                if (numcount == 0) {
+                    SQL = String.format("DELETE FROM %s WHERE row_num=\"%s\" AND col_num=\"%s\"", name, row, col);
+                    Log.i("@@@", "execSQL: " + SQL);
+                    db.execSQL(SQL);
+                }
                 for (int i = 0; i < scanResult.size(); i++) {
                     ScanResult result = scanResult.get(i);
-                    SQL = String.format("INSERT INTO %s (row_num, col_num, mac, level) VALUES (\"%s\", \"%s\", \"%s\", \"%s\")", name, row, col, result.BSSID, result.level);
+                    SQL = String.format("INSERT INTO %s (row_num, col_num, mac, level, count) VALUES (\"%s\", \"%s\", \"%s\", \"%s\", %d)", name, row, col, result.BSSID, result.level, numcount+1);
                     Log.i("@@@", "execSQL: " + SQL);
                     db.execSQL(SQL);
                 }

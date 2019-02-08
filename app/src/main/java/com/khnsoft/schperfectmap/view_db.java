@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.google.gson.JsonObject;
@@ -31,6 +32,7 @@ public class view_db extends AppCompatActivity {
     TextView total;
     Button resetDB;
     Button emptyDB;
+    LinearLayout dblist;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,7 +40,7 @@ public class view_db extends AppCompatActivity {
         setContentView(R.layout.activity_view_db);
 
         sp = getSharedPreferences("settings", MODE_PRIVATE);
-        db = openOrCreateDatabase("MAP_DATA", MODE_PRIVATE, null);
+        db = openOrCreateDatabase("MAP_DATA.db", MODE_PRIVATE, null);
 
         String ver = sp.getString("version_map", "0.1");
         String name = "VERSION_" + ver.replaceAll("\\.", "_");
@@ -51,6 +53,7 @@ public class view_db extends AppCompatActivity {
         entered = findViewById(R.id.entered);
         empty = findViewById(R.id.empty);
         total = findViewById(R.id.total);
+        dblist = findViewById(R.id.dblist);
 
         refresh();
 
@@ -129,7 +132,8 @@ public class view_db extends AppCompatActivity {
                     "row_num TEXT," +
                     "col_num TEXT," +
                     "mac TEXT," +
-                    "level TEXT)";
+                    "level TEXT," +
+                    "count INTEGER)";
             Log.i("@@@", "execSQL: " + SQL);
             db.execSQL(SQL);
 
@@ -139,26 +143,10 @@ public class view_db extends AppCompatActivity {
             Object[] keys = tiles.keySet().toArray();
 
             for (Object s : keys) {
-                String obj = s.toString();
-                Log.i("@@@", obj + " " + tiles.getAsJsonObject(obj).size());
-                if (tiles.getAsJsonObject(obj).size() == 0) {
-                    String[] spl = obj.split("/");
-                    SQL = "INSERT INTO " + name + " (row_num, col_num) VALUES (\"" + spl[0] + "\",\"" + spl[1] + "\")";
-                    Log.i("@@@", "execSQL: " + SQL);
-                    db.execSQL(SQL);
-                } else {
-                    JsonObject tile = tiles.getAsJsonObject(obj);
-                    Object[] tilekey = tile.keySet().toArray();
-                    for (Object o : tilekey) {
-                        String mac = o.toString();
-                        String[] spl = obj.split("/");
-                        String level = tile.get(mac).getAsString();
-                        SQL = String.format("INSERT INTO %s (row_num, col_num, mac, level) VALUES (\"%s\", \"%s\", \"%s\", \"%s\")",
-                                name, spl[0], spl[1], mac, level);
-                        Log.i("@@@", "execSQL: " + SQL);
-                        db.execSQL(SQL);
-                    }
-                }
+                String[] spl = s.toString().split("/");
+                SQL = String.format("INSERT INTO %s (row_num, col_num, count) VALUES (\"%s\", \"%s\", %d)", name, spl[0], spl[1], 0);
+                Log.i("@@@", "execSQL: " + SQL);
+                db.execSQL(SQL);
             }
             Log.i("@@@", "No such table. Created table: " + name);
             AddLog.add(this, "DB", "From map.json reset DB " + name);
@@ -196,7 +184,8 @@ public class view_db extends AppCompatActivity {
                     "row_num TEXT," +
                     "col_num TEXT," +
                     "mac TEXT," +
-                    "level TEXT)";
+                    "level TEXT," +
+                    "count INTEGER)";
             Log.i("@@@", "execSQL: " + SQL);
             db.execSQL(SQL);
 
@@ -207,7 +196,7 @@ public class view_db extends AppCompatActivity {
                     .toArray();
             for (Object s : tiles) {
                 String[] spl = s.toString().split("/");
-                SQL = "INSERT INTO " + name + " (row_num, col_num) VALUES (\"" + spl[0] + "\",\"" + spl[1] + "\")";
+                SQL = String.format("INSERT INTO %s (row_num, col_num, count) VALUES (\"%s\", \"%s\", %d)", name, spl[0], spl[1], 0);
                 Log.i("@@@", "execSQL: " + SQL);
                 db.execSQL(SQL);
             }
@@ -240,7 +229,8 @@ public class view_db extends AppCompatActivity {
     void refresh(){
         String ver = sp.getString("version_map", "0.1");
         String name = "VERSION_" + ver.replaceAll("\\.", "_");
-        SQL = "SELECT * FROM " + name + " ORDER BY CAST(row_num AS INTEGER), CAST(col_num AS INTEGER)";
+        SQL = "SELECT _id, row_num, col_num, mac, count FROM " + name + " ORDER BY CAST(row_num AS INTEGER), CAST(col_num AS INTEGER), count";
+        Log.i("@@@", "rawQuery:" + SQL);
         Cursor outCursor = db.rawQuery(SQL, null);
         int recordCount = -1;
         int rowC = outCursor.getCount();
@@ -250,16 +240,96 @@ public class view_db extends AppCompatActivity {
         int totalC = 0;
         String x = "-1";
         String y = "-1";
+        db_item item = null;
+        TextView numTile = null;
+        TextView numCount = null;
+        TextView numRow = null;
+        LinearLayout container = null;
+        int tileId;
+        int countId;
+        int rowId;
+        int containerId;
+        int count = -1;
+        String r = "";
+        String c = "";
+        int countRow=0;
+        dblist.removeAllViews();
         if (outCursor != null && (recordCount = outCursor.getCount()) != 0) {
             for (int i=0; i<recordCount; i++) {
                 outCursor.moveToNext();
-                if (x.equals(outCursor.getString(1)) && y.equals(outCursor.getString(2))) continue;
-                x = outCursor.getString(1);
-                y = outCursor.getString(2);
-                if (outCursor.getString(3) == null) emptyC++;
-                else enteredC++;
-                totalC++;
+                if (!x.equals(outCursor.getString(1)) || !y.equals(outCursor.getString(2))) {
+                    x = outCursor.getString(1);
+                    y = outCursor.getString(2);
+                    if (outCursor.getString(3) == null) emptyC++;
+                    else enteredC++;
+                    totalC++;
+                }
+
+                if (!r.equals(outCursor.getString(1)) || !c.equals(outCursor.getString(2))) {
+                    if (i!=0) {
+                        numRow.setText(""+countRow);
+                        numCount.setText(""+count);
+                    }
+
+                    item = new db_item(this);
+                    dblist.addView(item);
+                    container = findViewById(R.id.container);
+                    numTile = findViewById(R.id.numTile);
+                    numCount = findViewById(R.id.numCount);
+                    numRow = findViewById(R.id.numRow);
+                    containerId = getResources().getIdentifier("container_" + i, "id", getApplicationContext().getPackageName());
+                    tileId = getResources().getIdentifier("numTile_" + i, "id", getApplicationContext().getPackageName());
+                    countId = getResources().getIdentifier("numCount" + i, "id", getApplicationContext().getPackageName());
+                    rowId = getResources().getIdentifier("numRow" + i, "id", getApplicationContext().getPackageName());
+                    container.setId(containerId);
+                    numTile.setId(tileId);
+                    numCount.setId(countId);
+                    numRow.setId(rowId);
+
+                    r = outCursor.getString(1);
+                    c = outCursor.getString(2);
+                    numTile.setText(r+" / "+c);
+                    count = outCursor.getInt(4);
+                    countRow = 0;
+                    TagInfo tag = new TagInfo(r, c);
+                    container.setTag(tag);
+
+                    container.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            final TagInfo tag = (TagInfo) v.getTag();
+                            AlertDialog.Builder builder = new AlertDialog.Builder(view_db.this);
+                            builder.setTitle("타일 초기화")
+                                    .setMessage(String.format("%s/%s 타일의 AP 정보를 초기화 하시겠습니까?", tag.row, tag.col))
+                                    .setCancelable(true)
+                                    .setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            String ver = sp.getString("version_map", "0.1");
+                                            String name = "VERSION_" + ver.replaceAll("\\.", "_");
+                                            SQL = String.format("DELETE FROM %s WHERE row_num=%s AND col_num=%s", name, tag.row, tag.col);
+                                            Log.i("@@@", "execSQL: " + SQL);
+                                            db.execSQL(SQL);
+                                            SQL = String.format("INSERT INTO %s (row_num, col_num, count) VALUES (\"%s\", \"%s\", %d)", name, tag.row, tag.col, 0);
+                                            Log.i("@@@", "execSQL: " + SQL);
+                                            db.execSQL(SQL);
+                                            AddLog.add(view_db.this, "DB", String.format("Reset %s/%s", tag.row, tag.col));
+                                            refresh();
+                                        }
+                                    })
+                                    .setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) { }
+                                    })
+                                    .show();
+                        }
+                    });
+                }
+                if (count<outCursor.getInt(4)) count = outCursor.getInt(4);
+                countRow++;
             }
+            numRow.setText(""+countRow);
+            numCount.setText(""+count);
         }
         row.setText(""+rowC);
         col.setText(""+colC);

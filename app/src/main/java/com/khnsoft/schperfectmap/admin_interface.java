@@ -27,6 +27,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -92,7 +93,7 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
         editor = sp.edit();
         wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
 
-        db = openOrCreateDatabase("MAP_DATA", MODE_PRIVATE, null);
+        db = openOrCreateDatabase("MAP_DATA.db", MODE_PRIVATE, null);
 
         vScroll = (ScrollView) findViewById(R.id.vScroll);
         hScroll = (HorizontalScrollView) findViewById(R.id.hScroll);
@@ -355,34 +356,43 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                 JsonObject map = new JsonObject();
                 String ver = sp.getString("version_map", "0.1");
                 String name = "VERSION_" + ver.replaceAll("\\.", "_");
-                SQL = "SELECT _id, row_num, col_num, mac, CAST(level AS INTEGER) FROM " + name + " ORDER BY CAST(row_num AS INTEGER), CAST(col_num AS INTEGER)";
+                SQL = "SELECT _id, row_num, col_num, mac, CAST(level AS INTEGER), count FROM " + name + " ORDER BY CAST(row_num AS INTEGER), CAST(col_num AS INTEGER), count";
                 Log.i("@@@", "rawQuery: " + SQL);
                 Cursor outCursor = db.rawQuery(SQL, null);
                 String row = "";
                 String col = "";
+                int count=-1;
                 if (outCursor != null && outCursor.getCount() != 0) {
                     int recordCount = outCursor.getCount();
+                    JsonArray tilelist = new JsonArray();
                     JsonObject tile = new JsonObject();
                     for (int i=0; i<recordCount; i++) {
                         outCursor.moveToNext();
-                        if (outCursor.getString(3)==null){
-                            if (i!=0) map.add(row+"/"+col, tile);
+                        if (i==0) {
                             row = outCursor.getString(1);
                             col = outCursor.getString(2);
-                            tile = new JsonObject();
-                        } else if (row.equals(outCursor.getString(1)) && col.equals(outCursor.getString(2))) {
-                            row = outCursor.getString(1);
-                            col = outCursor.getString(2);
-                            tile.addProperty(outCursor.getString(3), outCursor.getInt(4));
-                            if (i == recordCount-1) map.add(row+"/"+col, tile);
-                        } else {
-                            if (i!=0) map.add(row+"/"+col, tile);
-                            row = outCursor.getString(1);
-                            col = outCursor.getString(2);
-                            tile = new JsonObject();
-                            tile.addProperty(outCursor.getString(3), outCursor.getInt(4));
+                            count = outCursor.getInt(5);
                         }
+                        if (!row.equals(outCursor.getString(1)) || !col.equals(outCursor.getString(2))) { // 다음 타일
+                            tilelist.add(tile);
+                            tile = new JsonObject();
+                            map.add(row+"/"+col, tilelist);
+                            tilelist = new JsonArray();
+                            row = outCursor.getString(1);
+                            col = outCursor.getString(2);
+                            count = outCursor.getInt(5);
+                        }
+                        if (count!=outCursor.getInt(5)) { // 다음 카운트
+                            tilelist.add(tile);
+                            tile = new JsonObject();
+                            count = outCursor.getInt(5);
+                        }
+                        if (outCursor.getString(3) == null) continue;
+                        tile.addProperty(outCursor.getString(3), outCursor.getInt(4));
                     }
+                    tilelist.add(tile);
+                    tile = new JsonObject();
+                    map.add(row+"/"+col, tilelist);
                 }
                 Log.i("@@@", map.toString());
                 JsonParser parser = new JsonParser();
@@ -402,8 +412,9 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
             Log.i("@@@", "SEND: " + json);
             AddLog.add(admin_interface.this, "SEND", json);
 
-            httpCon.setRequestProperty("Accept", "application/json");
             httpCon.setRequestProperty("Content-type", "application/json");
+            httpCon.setRequestProperty("User-Agent","Mozilla/5.0 ( compatible ) ");
+            httpCon.setRequestProperty("Accept","*/*");
             httpCon.setDoOutput(true);
             httpCon.setDoInput(true);
 
@@ -411,28 +422,14 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
             os.write(json.getBytes("utf-8"));
             os.flush();
 
+            int status = httpCon.getResponseCode();
             try {
-                is = httpCon.getInputStream();
+                if (status != HttpURLConnection.HTTP_OK) is = httpCon.getErrorStream();
+                else is = httpCon.getInputStream();
                 if (is != null) result = convertInputStreamToString(is);
                 else result = "Did not work!";
             } catch (Exception e) {
                 e.printStackTrace();
-                try {
-                    is = httpCon.getInputStream();
-                    if (is != null) result = convertInputStreamToString(is);
-                    else result = "Did not work!";
-                } catch (Exception e2) {
-                    e2.printStackTrace();
-                    try {
-                        is = httpCon.getInputStream();
-                        if (is != null) result = convertInputStreamToString(is);
-                        else result = "Did not work!";
-                    } catch (Exception e3) {
-                        e3.printStackTrace();
-                        status.setBackgroundColor(Color.RED);
-                        status.setText("Error");
-                    }
-                }
             } finally {
                 httpCon.disconnect();
             }
@@ -551,7 +548,8 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                         "row_num TEXT," +
                         "col_num TEXT," +
                         "mac TEXT," +
-                        "level TEXT)";
+                        "level TEXT," +
+                        "count INTEGER)";
                 Log.i("@@@", "execSQL: " + SQL);
                 db.execSQL(SQL);
                 AddLog.add(this, "DB", "Create DB " + name);
@@ -562,26 +560,10 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                 Object[] keys = tiles.keySet().toArray();
 
                 for (Object s : keys) {
-                    String obj = s.toString();
-                    Log.i("@@@", obj + " " + tiles.getAsJsonObject(obj).size());
-                    if (tiles.getAsJsonObject(obj).size() == 0) {
-                        String[] spl = obj.split("/");
-                        SQL = "INSERT INTO " + name + " (row_num, col_num) VALUES (\"" + spl[0] + "\",\"" + spl[1] + "\")";
-                        Log.i("@@@", "execSQL: " + SQL);
-                        db.execSQL(SQL);
-                    } else {
-                        JsonObject tile = tiles.getAsJsonObject(obj);
-                        Object[] tilekey = tile.keySet().toArray();
-                        for (Object o : tilekey) {
-                            String mac = o.toString();
-                            String[] spl = obj.split("/");
-                            String level = tile.get(mac).getAsString();
-                            SQL = String.format("INSERT INTO %s (row_num, col_num, mac, level) VALUES (\"%s\", \"%s\", \"%s\", \"%s\")",
-                                    name, spl[0], spl[1], mac, level);
-                            Log.i("@@@", "execSQL: " + SQL);
-                            db.execSQL(SQL);
-                        }
-                    }
+                    String[] spl = s.toString().split("/");
+                    SQL = String.format("INSERT INTO %s (row_num, col_num, count) VALUES (\"%s\", \"%s\", %d)", name, spl[0], spl[1], 0);
+                    Log.i("@@@", "execSQL: " + SQL);
+                    db.execSQL(SQL);
                 }
                 Log.i("@@@", "No such table. Created table: " + name);
                 show();

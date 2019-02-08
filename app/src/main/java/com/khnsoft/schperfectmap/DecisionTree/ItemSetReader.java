@@ -414,6 +414,8 @@ public class ItemSetReader {
 		}
 		for(int i = 0; i < rawAttributes.size(); ++i) {
 			int aidx = attributeSet.indexOf(rawAttributes.get(i));
+			if (aidx < 0)
+				continue;
 			//double aval = Double.valueOf(rawValues.get(i)).doubleValue();
 			values[aidx] = new KnownNumericalValue(rawValues.get(i));
 		}

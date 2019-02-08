@@ -33,7 +33,9 @@ public class user_interface extends AppCompatActivity {
 
     private SensorManager mSensorManager = null;
 
-    private Sensor mSensor;
+    private Sensor mGravity;
+    private Sensor mAccelerometer;
+    private Sensor mMagnetometer;
 
     boolean haveGravity = false;
     boolean haveAccelerometer = false;
@@ -43,18 +45,32 @@ public class user_interface extends AppCompatActivity {
 
     private SensorEventListener mSensorEventListener = new SensorEventListener() {
 
-        float[] orientation = new float[3];
+        float[] gData = new float[3];
+        float[] mData = new float[3];
         float[] rMat = new float[9];
+        float[] iMat = new float[9];
+        float[] orientation = new float[3];
 
         public void onAccuracyChanged( Sensor sensor, int accuracy ) {}
 
         @Override
         public void onSensorChanged( SensorEvent event ) {
-            if( event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR ){
-                // calculate th rotation matrix
-                SensorManager.getRotationMatrixFromVector( rMat, event.values );
-                // get the azimuth value (orientation[0]) in degree
-                mAzimuth = (int) ( Math.toDegrees( SensorManager.getOrientation( rMat, orientation )[0] ) + 360 ) % 360;
+            float[] data;
+            switch ( event.sensor.getType() ) {
+                case Sensor.TYPE_GRAVITY:
+                    gData = event.values.clone();
+                    break;
+                case Sensor.TYPE_ACCELEROMETER:
+                    gData = event.values.clone();
+                    break;
+                case Sensor.TYPE_MAGNETIC_FIELD:
+                    mData = event.values.clone();
+                    break;
+                default: return;
+            }
+
+            if ( SensorManager.getRotationMatrix( rMat, iMat, gData, mData ) ) {
+                mAzimuth= (int) ( Math.toDegrees( SensorManager.getOrientation( rMat, orientation )[0] ) + 360 ) % 360;
                 tv.setText(""+mAzimuth);
             }
         }
@@ -64,9 +80,19 @@ public class user_interface extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_user_interface);
 
-        this.mSensorManager = (SensorManager) this.getSystemService(SENSOR_SERVICE);
+        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 
-        this.mSensor = this.mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        this.mGravity = this.mSensorManager.getDefaultSensor( Sensor.TYPE_GRAVITY );
+        this.haveGravity = this.mSensorManager.registerListener( mSensorEventListener, this.mGravity, SensorManager.SENSOR_DELAY_GAME );
+
+        this.mAccelerometer = this.mSensorManager.getDefaultSensor( Sensor.TYPE_ACCELEROMETER );
+        this.haveAccelerometer = this.mSensorManager.registerListener( mSensorEventListener, this.mAccelerometer, SensorManager.SENSOR_DELAY_GAME );
+
+        this.mMagnetometer = this.mSensorManager.getDefaultSensor( Sensor.TYPE_MAGNETIC_FIELD );
+        this.haveMagnetometer = this.mSensorManager.registerListener( mSensorEventListener, this.mMagnetometer, SensorManager.SENSOR_DELAY_GAME );
+
+        if( this.haveGravity )
+            this.mSensorManager.unregisterListener( this.mSensorEventListener, this.mAccelerometer );
 
         tv = findViewById(R.id.textView);
     }
@@ -80,6 +106,18 @@ public class user_interface extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        this.haveGravity = this.mSensorManager.registerListener(mSensorEventListener, this.mSensor, SensorManager.SENSOR_DELAY_GAME);
+
+        this.mGravity = this.mSensorManager.getDefaultSensor( Sensor.TYPE_GRAVITY );
+        this.haveGravity = this.mSensorManager.registerListener( mSensorEventListener, this.mGravity, SensorManager.SENSOR_DELAY_GAME );
+
+        this.mAccelerometer = this.mSensorManager.getDefaultSensor( Sensor.TYPE_ACCELEROMETER );
+        this.haveAccelerometer = this.mSensorManager.registerListener( mSensorEventListener, this.mAccelerometer, SensorManager.SENSOR_DELAY_GAME );
+
+        this.mMagnetometer = this.mSensorManager.getDefaultSensor( Sensor.TYPE_MAGNETIC_FIELD );
+        this.haveMagnetometer = this.mSensorManager.registerListener( mSensorEventListener, this.mMagnetometer, SensorManager.SENSOR_DELAY_GAME );
+
+        // if there is a gravity sensor we do not need the accelerometer
+        if( this.haveGravity )
+            this.mSensorManager.unregisterListener( this.mSensorEventListener, this.mAccelerometer );
     }
 }

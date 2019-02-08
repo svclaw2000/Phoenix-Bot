@@ -4,113 +4,45 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:layout_marginVertical="2dp">
-
-    <TextView
-        android:id="@+id/dbname"
-        android:layout_width="match_parent"
-        android:layout_height="40dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:textColor="#000"
-        android:textSize="16sp"
-        android:text="DATABASE NAME"
-        android:background="@drawable/ap_layout_box_small"/>
+    android:orientation="vertical">
 
     <LinearLayout
+        android:id="@+id/container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="horizontal">
 
         <TextView
+            android:id="@+id/numTile"
             android:layout_width="0dp"
             android:layout_height="30dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
             android:textSize="16sp"
-            android:text="ROW"
+            android:text="0 / 0"
             android:background="@drawable/ap_layout_box_small"/>
 
         <TextView
-            android:id="@+id/row"
+            android:id="@+id/numCount"
             android:layout_width="0dp"
             android:layout_height="30dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
             android:textSize="16sp"
-            android:text="row"
+            android:text="0"
             android:background="@drawable/ap_layout_box_small"/>
 
         <TextView
+            android:id="@+id/numRow"
             android:layout_width="0dp"
             android:layout_height="30dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
             android:textSize="16sp"
-            android:text="COL"
-            android:background="@drawable/ap_layout_box_small"/>
-
-        <TextView
-            android:id="@+id/col"
-            android:layout_width="0dp"
-            android:layout_height="30dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textColor="#000"
-            android:textSize="16sp"
-            android:text="col"
-            android:background="@drawable/ap_layout_box_small"/>
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="horizontal">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="30dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textColor="#000"
-            android:textSize="16sp"
-            android:text="ENTERED"
-            android:background="@drawable/ap_layout_box_small"/>
-
-        <TextView
-            android:id="@+id/entered"
-            android:layout_width="0dp"
-            android:layout_height="30dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textColor="#000"
-            android:textSize="16sp"
-            android:text="entered"
-            android:background="@drawable/ap_layout_box_small"/>
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="30dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textColor="#000"
-            android:textSize="16sp"
-            android:text="EMPTY"
-            android:background="@drawable/ap_layout_box_small"/>
-
-        <TextView
-            android:id="@+id/empty"
-            android:layout_width="0dp"
-            android:layout_height="30dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textColor="#000"
-            android:textSize="16sp"
-            android:text="empty"
+            android:text="0"
             android:background="@drawable/ap_layout_box_small"/>
     </LinearLayout>
 </LinearLayout>

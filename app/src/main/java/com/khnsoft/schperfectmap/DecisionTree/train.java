@@ -43,14 +43,32 @@ public class train
 		bw.close();
 		System.out.println("JAVA> tree saved to " + modelPath);
 
-		realDecisionTree m2 = new realDecisionTree("m2", m.getExpressionOfDT());
+		//BufferedReader br = new BufferedReader(new FileReader(modelPath));
+		FileReader fr = new FileReader(modelPath);
+		String m1_load = "";
+		int tmp;
+		while (true) {
+			//String tempLine = br.readLine();
+			tmp = fr.read();
+			if(tmp < 0)
+				break;
+			m1_load += (char)tmp; //tempLine;
+		}
+		fr.close();
+		System.out.println("m1_load ----------------------------");
+		System.out.println(m1_load);
+		System.out.println("------------------------------------");
+
+		//realDecisionTree m2 = new realDecisionTree("m2", m.getExpressionOfDT());
+		realDecisionTree m2 = new realDecisionTree("m2", m1_load);
 		m2.setGoalAttribute();
 		bw = new BufferedWriter(new FileWriter(modelPath + "2"));
 		bw.write(m2.getExpressionOfDT());
 		bw.close();
 
 		m2.setTrainTestFile(dataPath, dataPath);
-		m2.generateItemSet();
+		//m2.generateItemSet();
+		m2.setItemSet();
 		m2.resetHash();
 		testAccuracy = m2.TestWithTrainingData();
 		for(int i = 0; i < testAccuracy.length; ++i) {

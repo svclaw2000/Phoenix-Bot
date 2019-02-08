@@ -22,8 +22,6 @@
 
 package com.khnsoft.schperfectmap.DecisionTree;
 
-import android.util.Log;
-
 import java.util.*;
 
 

@@ -140,6 +140,11 @@ public class realDecisionTree
 		m_oTrainingAttributeSet = m_oTrainingSet.attributeSet();
 		m_nTotalTrainingItems = (int)m_oTrainingSet.size();
 	}
+
+	public void setItemSet()
+	{
+		m_oTrainingAttributeSet = m_oDT.getAttributeSet();
+	}
 	
 	/** Test�� �̿�� attribute���� training attribute���� index�� ���� �����ϰ�, Test�� attribute set ��ü�� ���Ѵ�.  */
 	public void setTestAttributesByAttributeIndices( int [] anAttributeIndices )

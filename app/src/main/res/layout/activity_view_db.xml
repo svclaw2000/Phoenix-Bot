@@ -3,29 +3,40 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="vertical"
     android:layout_margin="3dp">
 
     <TextView
         android:id="@+id/dbname"
         android:layout_width="match_parent"
-        android:layout_height="40dp"
-        android:layout_weight="1"
+        android:layout_height="30dp"
         android:gravity="center"
         android:textColor="#000"
         android:textSize="16sp"
         android:text="DATABASE NAME"
         android:background="@drawable/ap_layout_box_small"/>
 
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:id="@+id/dblist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="horizontal">
 
         <TextView
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="25dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
@@ -36,7 +47,7 @@
         <TextView
             android:id="@+id/row"
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="25dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
@@ -46,7 +57,7 @@
 
         <TextView
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="25dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
@@ -57,7 +68,7 @@
         <TextView
             android:id="@+id/col"
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="25dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
@@ -68,12 +79,12 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="horizontal">
 
         <TextView
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="25dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
@@ -84,7 +95,7 @@
         <TextView
             android:id="@+id/entered"
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="25dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
@@ -94,7 +105,7 @@
 
         <TextView
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="25dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
@@ -105,7 +116,7 @@
         <TextView
             android:id="@+id/empty"
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="25dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
@@ -116,12 +127,12 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="horizontal">
 
         <TextView
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="25dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
@@ -132,7 +143,7 @@
         <TextView
             android:id="@+id/total"
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="25dp"
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="#000"
@@ -140,10 +151,6 @@
             android:text="total"
             android:background="@drawable/ap_layout_box_small"/>
     </LinearLayout>
-
-    <Space
-        android:layout_width="match_parent"
-        android:layout_height="50dp" />
 
     <LinearLayout
         android:layout_width="match_parent"

@@ -66,18 +66,25 @@ public class AttributeSet {
 	 *         0 <= index < size().
 	 **/
 	public int indexOf(Attribute attribute) {
-		Integer index = (Integer) attributesHash.get(attribute.name()); //attribute);
+		Object tmpHash = attributesHash.get(attribute.name());
+		if (tmpHash == null)
+			return -1;
 
-		if (index == null) {
-			System.out.println(attribute.name());
-			throw new IllegalArgumentException("Unknown attribute");
-		}
+		Integer index = (Integer)tmpHash; //attribute);
+
+		//if (index == null) {
+		//	System.out.println(attribute.name());
+		//	throw new IllegalArgumentException("Unknown attribute");
+		//}
 
 		return index.intValue();
 	}
 
 	public int indexOf(String attrName) {
-		return (Integer)attributesHash.get(attrName);
+		Object tmpHash = attributesHash.get(attrName);
+		if (tmpHash == null)
+			return -1;
+		return (Integer)tmpHash;
 	}
 
 
@@ -195,7 +202,7 @@ public class AttributeSet {
 		attributesHash = new Hashtable();
 		int index = 0;
 		for(Attribute a : attributes) {
-			System.out.println("더한다 " + a.name() + "," + index);
+			//System.out.println("더한다 " + a.name() + "," + index);
 			Object oldValue = attributesHash.put(
 					a.name(), 
 					new Integer(index));
