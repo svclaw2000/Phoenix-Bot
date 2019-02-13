@@ -67,6 +67,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Sensor mAcceSensor;
     Sensor mGravSensor;
     Sensor mMagnSensor;
+    
     double mYaw, mPitch, mRoll;
     double mAccPitch, mAccRoll;
     double timestamp;
@@ -105,6 +106,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // Vector<Double> rawValues;
     JsonObject wifiFingerprint;
     TextView Tres;
+    boolean checking;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -137,8 +139,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         sp = getSharedPreferences("settings", MODE_PRIVATE);
         editor = sp.edit();
         if (sp.getBoolean("direction", true)) {
+            Tres.setVisibility(View.VISIBLE);
             findViewById(R.id.sensorValue).setVisibility(View.VISIBLE);
         } else {
+            Tres.setVisibility(View.INVISIBLE);
             findViewById(R.id.sensorValue).setVisibility(View.INVISIBLE);
         }
 
@@ -173,7 +177,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         wm.startScan();
         // Log.i("@@@", "Start Scan");
 
-        if (!checkPermissions()) finish();
+        if (!checkPermissions()) {
+            finish();
+        }
 
         if (chkInfo()) {
             httpTask = new HttpAsyncTask(MainActivity.this);
@@ -306,8 +312,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     .show();
         }
         if (sp.getBoolean("direction", true)) {
+            Tres.setVisibility(View.VISIBLE);
             findViewById(R.id.sensorValue).setVisibility(View.VISIBLE);
         } else {
+            Tres.setVisibility(View.INVISIBLE);
             findViewById(R.id.sensorValue).setVisibility(View.INVISIBLE);
         }
 
@@ -413,8 +421,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 default:
                     return;
             }
+
             if (SensorManager.getRotationMatrix(rMat, iMat, gData, mData)){
                 mYaw = (Math.toDegrees(SensorManager.getOrientation(rMat, orientation )[0]) + 360) % 360;
+                if (mRoll > 90 || mRoll < -90)  mYaw = (mYaw + 180) % 360;
             }
 
             if (gyroRunning && acceRunning){
@@ -520,8 +530,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case R.id.fab1:
                 anim();
-                Intent intent = new Intent(this, preferences.class);
-                //Intent intent = new Intent(this, user_interface.class);
+                //Intent intent = new Intent(this, preferences.class);
+                Intent intent = new Intent(this, user_interface.class);
                 startActivity(intent);
                 break;
             case R.id.fab2:
@@ -571,7 +581,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 @Override
                 public void run() {
                     try {
-                        if (strJson.isEmpty()) Tres.setText("Error");
+                        if (strJson.isEmpty() || strJson.contains("Error")) Tres.setText("Error");
                         JsonParser parser = new JsonParser();
                         JsonObject json = (JsonObject) parser.parse(strJson);
 
