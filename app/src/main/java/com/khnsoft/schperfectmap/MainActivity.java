@@ -31,6 +31,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -87,9 +88,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     SharedPreferences sp;
     SharedPreferences.Editor editor;
-    FloatingActionButton fab;
-    FloatingActionButton fab1;
-    FloatingActionButton fab2;
+    ImageView fab;
+	ImageView fab1;
+	ImageView fab2;
     Animation fab_open;
     Animation fab_close;
     Boolean isOpen;
@@ -530,8 +531,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case R.id.fab1:
                 anim();
-                //Intent intent = new Intent(this, preferences.class);
-                Intent intent = new Intent(this, user_interface.class);
+                Intent intent = new Intent(this, preferences.class);
+                // Intent intent = new Intent(this, user_interface.class);
                 startActivity(intent);
                 break;
             case R.id.fab2:

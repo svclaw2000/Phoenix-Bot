@@ -103,9 +103,7 @@ public class user_interface extends AppCompatActivity implements SensorEventList
 		if(SensorManager.getRotationMatrix(inR, inclineMatrix, accelValues, compassValues)){
 			SensorManager.getOrientation(inR, prefValues);
 			mInclination = SensorManager.getInclination(inclineMatrix);
-			
 			doUpdate(null);
-			
 		}else{
 			Toast.makeText(this, "无法获得矩阵（SensorManager.getRotationMatrix）", Toast.LENGTH_LONG);
 			finish();

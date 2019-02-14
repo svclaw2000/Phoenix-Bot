@@ -71,10 +71,10 @@
         </LinearLayout>
     </LinearLayout>
 
-    <android.support.design.widget.FloatingActionButton
+    <ImageView
         android:id="@+id/fab"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
         android:layout_gravity="top|end"
         android:layout_margin="16dp"
         android:backgroundTint="#beffd0"
@@ -82,10 +82,10 @@
         app:backgroundTint="#8affaa"
         android:clickable="true"/>
 
-    <android.support.design.widget.FloatingActionButton
+    <ImageView
         android:id="@+id/fab1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
         android:layout_gravity="top|end"
         android:layout_marginEnd="16dp"
         android:layout_marginTop="70dp"
@@ -94,10 +94,10 @@
         android:visibility="invisible"
         android:clickable="true"/>
 
-    <android.support.design.widget.FloatingActionButton
+    <ImageView
         android:id="@+id/fab2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
         android:layout_gravity="top|end"
         android:layout_marginTop="120dp"
         android:layout_marginEnd="16dp"
