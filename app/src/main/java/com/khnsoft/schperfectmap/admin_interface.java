@@ -113,7 +113,7 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
         } else {
             if (!sending) {
                 httpTask = new HttpAsyncTask(admin_interface.this);
-                String ip = "http://" + sp.getString("ip", "");
+                String ip = "https://" + sp.getString("ip", "");
                 Log.i("@@@", "Target IP: " + ip);
                 httpTask.execute(ip, "onCreate");
             }
@@ -244,7 +244,7 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         httpTask = new HttpAsyncTask(admin_interface.this);
-                        String ip = "http://" + sp.getString("ip", "");
+                        String ip = "https://" + sp.getString("ip", "");
                         Log.i("@@@", "Target IP: " + ip);
                         httpTask.execute(ip, "sendToServer");
                     }

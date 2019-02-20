@@ -30,100 +30,70 @@ import com.khnsoft.schperfectmap.DecisionTree.*;
 import java.io.IOException;
 import java.util.List;
 
-public class user_interface extends AppCompatActivity implements SensorEventListener{
+public class user_interface extends AppCompatActivity{
 	
-	TextView nowOne, oldOne;
-	Button button;
-	
-	private SensorManager sm;
-	private Sensor accelSensor = null, compassSensor = null, orientSensor = null;
-	private float[] accelValues = new float[3], compassValues = new float[3],orientValues = new float[3];
-	private boolean ready1 = false; //检查传感器是否正常工作，即是否同时具有加速传感器和磁场传感器。
-	private boolean ready2 = false;
-	private float[] inR = new float[9];
-	private float[] inclineMatrix = new float[9];
-	private float[] prefValues = new float[3];
-	private double mInclination;
-	private int count = 1;
+	Button bt;
+	TextView tv;
+	SensorManager sm;
+	Sensor gyroSensor;
+	double dt = 0;
+	double ts = 0;
+	double mYaw, mPitch, mRoll;
+	float NS2S = 1.0f/1000000000.0f;
+	double RAD2DGR = 180 / Math.PI;
 	
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_user_interface);
 		
-		nowOne = findViewById(R.id.newOne);
-		oldOne = findViewById(R.id.oldOne);
-		button = findViewById(R.id.button);
-		
-		button.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				doUpdate(null);
-			}
-		});
-		
+		bt = findViewById(R.id.bt);
+		tv = findViewById(R.id.tv);
 		sm = (SensorManager) getSystemService(SENSOR_SERVICE);
-		accelSensor = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-		compassSensor = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-		orientSensor = sm.getDefaultSensor(Sensor.TYPE_ORIENTATION);
+		gyroSensor = sm.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 	}
 	
 	@Override
 	protected void onResume() {
 		super.onResume();
-		sm.registerListener(this, accelSensor, SensorManager.SENSOR_DELAY_NORMAL);
-		sm.registerListener(this, compassSensor, SensorManager.SENSOR_DELAY_NORMAL);
-		sm.registerListener(this, orientSensor, SensorManager.SENSOR_DELAY_NORMAL);
+		sm.registerListener(sensorListener, gyroSensor, SensorManager.SENSOR_DELAY_NORMAL);
 	}
 	
 	@Override
 	protected void onPause() {
 		super.onPause();
-		sm.unregisterListener(this);
+		sm.unregisterListener(sensorListener);
 	}
 	
-	@Override
-	public void onSensorChanged(SensorEvent event) {
-		switch(event.sensor.getType()){
-			case Sensor.TYPE_ACCELEROMETER:
-				accelValues = event.values.clone();
-				if(compassValues[0] != 0)
-					ready1 = true;
-				break;
+	SensorEventListener sensorListener = new SensorEventListener() {
+		@Override
+		public void onSensorChanged(SensorEvent event) {
+			float[] values;
 			
-			case Sensor.TYPE_MAGNETIC_FIELD:
-				compassValues = event.values.clone();
-				if(accelValues[2] != 0)
-					ready2 = true;
-				break;
+			if (ts == 0) {
+				ts = event.timestamp;
+				return;
+			}
+			dt = (event.timestamp - ts) * NS2S;
+			ts = event.timestamp;
+			
+			switch (event.sensor.getType()) {
+				case Sensor.TYPE_GYROSCOPE:
+					values = event.values.clone();
+					mRoll += values[0] * dt * RAD2DGR;
+					mPitch += values[1] * dt * RAD2DGR;
+					mYaw += values[2] * dt * RAD2DGR;
+					refresh();
+					break;
+			}
 		}
 		
-		if(!ready1 || !ready2)
-			return;
+		@Override
+		public void onAccuracyChanged(Sensor sensor, int accuracy) {
 		
-		if(SensorManager.getRotationMatrix(inR, inclineMatrix, accelValues, compassValues)){
-			SensorManager.getOrientation(inR, prefValues);
-			mInclination = SensorManager.getInclination(inclineMatrix);
-			doUpdate(null);
-		}else{
-			Toast.makeText(this, "无法获得矩阵（SensorManager.getRotationMatrix）", Toast.LENGTH_LONG);
-			finish();
 		}
-		
-	}
+	};
 	
-	@Override
-	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-	
-	}
-	
-	public void doUpdate(View v){
-		if(!ready1 || !ready2)
-			return;
-		float mAzimuth = (float)Math.toDegrees(prefValues[0]);
-		
-		String msg = String.format("推荐方式：\n方位角：%7.3f\npitch: %7.3f\nroll: %7.3f\n地磁仰角：%7.3f\n",
-				mAzimuth,Math.toDegrees(prefValues[1]),Math.toDegrees(prefValues[2]),
-				Math.toDegrees(mInclination));
-		nowOne.setText(msg);
+	void refresh() {
+		tv.setText(String.format("Yaw: %f\nPitch: %f\nRoll: %f", mYaw, mPitch, mRoll));
 	}
 }

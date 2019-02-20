@@ -50,8 +50,17 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import static com.khnsoft.schperfectmap.add_ap_info.MULTIPLE_PERMISSIONS;
 
@@ -183,8 +192,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
         if (chkInfo()) {
+        	initHttps();
             httpTask = new HttpAsyncTask(MainActivity.this);
-            String ip = "http://" + sp.getString("ip", "");
+            String ip = "https://" + sp.getString("ip", "");
             Log.i("@@@", "Target IP: " + ip);
             httpTask.execute(ip, "onCreate");
         }
@@ -496,7 +506,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
 
             httpTask = new HttpAsyncTask(MainActivity.this);
-            String ip = "http://" + sp.getString("ip", "");
+            String ip = "https://" + sp.getString("ip", "");
             Log.i("@@@", "Target IP: " + ip);
             httpTask.execute(ip, "locate");
         }
@@ -532,7 +542,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.fab1:
                 anim();
                 Intent intent = new Intent(this, preferences.class);
-                // Intent intent = new Intent(this, user_interface.class);
+                //Intent intent = new Intent(this, user_interface.class);
                 startActivity(intent);
                 break;
             case R.id.fab2:
@@ -623,7 +633,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         try {
             URL urlCon = new URL(url);
-            HttpURLConnection httpCon = (HttpURLConnection) urlCon.openConnection();
+            HttpsURLConnection httpsCon = (HttpsURLConnection) urlCon.openConnection();
+            httpsCon.setHostnameVerifier(new HostnameVerifier() {
+				@Override
+				public boolean verify(String hostname, SSLSession session) {
+					return true;
+				}
+			});
+            HttpURLConnection httpCon = httpsCon;
             String json = "";
             WifiInfo info = wm.getConnectionInfo();
             int ipAddress = info.getIpAddress();
@@ -729,6 +746,33 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.i("@@@", "Cannot save at " + file.getPath());
         }
         return false;
+    }
+    
+    void initHttps() {
+        TrustManager[] trustAllCerts = new TrustManager[] {new X509TrustManager() {
+			@Override
+			public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+		
+			}
+	
+			@Override
+			public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+		
+			}
+	
+			@Override
+			public X509Certificate[] getAcceptedIssuers() {
+				return new X509Certificate[]{};
+			}
+		}};
+        
+        try {
+			SSLContext sc = SSLContext.getInstance("TLS");
+			sc.init(null, trustAllCerts, new java.security.SecureRandom());
+			HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+		} catch (Exception e) {
+        	e.printStackTrace();
+		}
     }
 
     int[] checkVersions(JsonObject vers) throws PackageManager.NameNotFoundException {
