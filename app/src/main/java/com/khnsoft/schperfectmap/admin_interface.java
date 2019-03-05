@@ -42,8 +42,17 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 public class admin_interface extends AppCompatActivity implements View.OnClickListener {
 
@@ -112,6 +121,7 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                     .show();
         } else {
             if (!sending) {
+            	initHttps();
                 httpTask = new HttpAsyncTask(admin_interface.this);
                 String ip = "https://" + sp.getString("ip", "");
                 Log.i("@@@", "Target IP: " + ip);
@@ -339,7 +349,14 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
 
         try {
             URL urlCon = new URL(url);
-            HttpURLConnection httpCon = (HttpURLConnection) urlCon.openConnection();
+            HttpsURLConnection httpsCon = (HttpsURLConnection) urlCon.openConnection();
+            httpsCon.setHostnameVerifier(new HostnameVerifier() {
+                @Override
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            });
+            HttpURLConnection httpCon = httpsCon;
             String json = "";
             WifiInfo info = wm.getConnectionInfo();
             int ipAddress = info.getIpAddress();
@@ -488,6 +505,33 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
             e.printStackTrace();
         }
         return output.toString();
+    }
+    
+    void initHttps() {
+        TrustManager[] trustAllCerts = new TrustManager[] {new X509TrustManager() {
+            @Override
+            public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+            
+            }
+            
+            @Override
+            public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+            
+            }
+            
+            @Override
+            public X509Certificate[] getAcceptedIssuers() {
+                return new X509Certificate[]{};
+            }
+        }};
+        
+        try {
+            SSLContext sc = SSLContext.getInstance("TLS");
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     int[] checkVersions(JsonObject vers) throws PackageManager.NameNotFoundException {

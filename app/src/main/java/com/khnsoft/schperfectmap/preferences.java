@@ -41,9 +41,9 @@ public class preferences extends AppCompatActivity {
         if (sp.getString("requestType", "").equals("mr_admin")) check_admin.setChecked(true);
         else if (sp.getString("requestType", "").equals("mr_user")) check_user.setChecked(true);
 
-        ip_edit.setText(sp.getString("ip", ""));
-        id_edit.setText(sp.getString("userID", ""));
-        pw_edit.setText(sp.getString("passwd", ""));
+        ip_edit.setText(sp.getString("ip", "114.71.220.20"));
+        id_edit.setText(sp.getString("userID", "admin"));
+        pw_edit.setText(sp.getString("passwd", "admin1234"));
         direction.setChecked(sp.getBoolean("direction", true));
 
         check_admin.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {

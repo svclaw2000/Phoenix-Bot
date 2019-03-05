@@ -38,7 +38,7 @@ public class user_interface extends AppCompatActivity{
 	Sensor gyroSensor;
 	double dt = 0;
 	double ts = 0;
-	double mYaw, mPitch, mRoll;
+	double m0, m1, m2;
 	float NS2S = 1.0f/1000000000.0f;
 	double RAD2DGR = 180 / Math.PI;
 	
@@ -79,9 +79,9 @@ public class user_interface extends AppCompatActivity{
 			switch (event.sensor.getType()) {
 				case Sensor.TYPE_GYROSCOPE:
 					values = event.values.clone();
-					mRoll += values[0] * dt * RAD2DGR;
-					mPitch += values[1] * dt * RAD2DGR;
-					mYaw += values[2] * dt * RAD2DGR;
+					m0 += values[0] * dt * RAD2DGR;
+					m1 += values[1] * dt * RAD2DGR;
+					m2 += values[2] * dt * RAD2DGR;
 					refresh();
 					break;
 			}
@@ -94,6 +94,6 @@ public class user_interface extends AppCompatActivity{
 	};
 	
 	void refresh() {
-		tv.setText(String.format("Yaw: %f\nPitch: %f\nRoll: %f", mYaw, mPitch, mRoll));
+		tv.setText(String.format("m0: %f\nm1: %f\nm2: %f", m0, m1, m2));
 	}
 }
