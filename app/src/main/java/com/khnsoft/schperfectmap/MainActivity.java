@@ -20,7 +20,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
@@ -36,7 +35,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -65,17 +63,18 @@ import javax.net.ssl.X509TrustManager;
 import static com.khnsoft.schperfectmap.add_ap_info.MULTIPLE_PERMISSIONS;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-
+	
 	SurfaceView preview;
 	Camera camera;
 	SurfaceHolder cameraHolder;
 	LinearLayout background;
-
+	
 	// sensor
 	SensorManager sm;
 	Sensor mGyroSensor;
 	Sensor mAcceSensor;
 	Sensor mMagnSensor;
+	Sensor mGravSensor;
 	
 	double mYaw, mPitch, mRoll;
 	double mAccPitch, mAccRoll;
@@ -97,8 +96,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	long lastSyncTime = -1;
 	double[] fixYaw;
 	int fixCount = 0;
+	final int MAX_FIX_COUNT = 5;
+	final int UPDATE_TIME = 0;
 	boolean fixMode = false;
-
+	
+	float[] gData = new float[3];
+	float[] mData = new float[3];
+	boolean gReady = false;
+	boolean mReady = false;
+	
 	SharedPreferences sp;
 	SharedPreferences.Editor editor;
 	ImageView fab;
@@ -107,26 +113,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	Animation fab_open;
 	Animation fab_close;
 	Boolean isOpen;
-
+	
 	WifiManager wm;
 	List<ScanResult> scanResult;
 	String[] permissions = new String[] {Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.CAMERA};
-
+	
 	String strJson;
 	HttpAsyncTask httpTask;
-
+	
 	// realDecisionTree dTree = null;
 	// Vector<String> rawAttributes;
 	// Vector<Double> rawValues;
 	JsonObject wifiFingerprint;
 	TextView Tres;
 	boolean checking;
-
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-
+		
 		preview = findViewById(R.id.preview_camera);
 		background = findViewById(R.id.background);
 		background.setOnClickListener(new View.OnClickListener() {
@@ -138,7 +144,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				}
 			}
 		});
-
+		
 		sm = (SensorManager) getSystemService(SENSOR_SERVICE);
 		yaw = findViewById(R.id.yaw);
 		pitch = findViewById(R.id.pitch);
@@ -146,9 +152,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		mGyroSensor = sm.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 		mAcceSensor = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 		mMagnSensor = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-
+		mGravSensor = sm.getDefaultSensor(Sensor.TYPE_GRAVITY);
+		
 		Tres = findViewById(R.id.result);
-
+		
 		sp = getSharedPreferences("settings", MODE_PRIVATE);
 		editor = sp.edit();
 		if (sp.getBoolean("direction", true)) {
@@ -158,7 +165,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			Tres.setVisibility(View.INVISIBLE);
 			findViewById(R.id.sensorValue).setVisibility(View.INVISIBLE);
 		}
-
+		
 		isOpen = false;
 		fab = findViewById(R.id.fab);
 		fab1 = findViewById(R.id.fab1);
@@ -172,7 +179,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		fab1.setOnClickListener(this);
 		fab2.setOnClickListener(this);
 		init();
-
+		
 		String FILE_NAME = "Log.log";
 		File file = new File(this.getFilesDir(), FILE_NAME);
 		if (!file.exists()) {
@@ -185,15 +192,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				e.printStackTrace();
 			}
 		}
-
+		
 		wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
 		wm.startScan();
 		// Log.i("@@@", "Start Scan");
-
+		
 		if (!checkPermissions()) {
 			finish();
 		}
-
+		
 		if (chkInfo()) {
 			initHttps();
 			httpTask = new HttpAsyncTask(MainActivity.this);
@@ -234,13 +241,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			}
 		} */
 	}
-
+	
 	Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
 		@Override
 		public void onAutoFocus(boolean success, Camera camera) {
 		}
 	};
-
+	
 	Handler starthandler = new Handler(new Handler.Callback() {
 		@Override
 		public boolean handleMessage(Message msg) {
@@ -257,11 +264,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			return false;
 		}
 	});
-
+	
 	void init() {
 		starthandler.sendEmptyMessage(0);
 	}
-
+	
 	SurfaceHolder.Callback callback = new SurfaceHolder.Callback() {
 		@Override
 		public void surfaceCreated(SurfaceHolder holder) {
@@ -275,16 +282,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			} catch (IOException e) {
 			}
 		}
-
+		
 		@Override
 		public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 			if (cameraHolder == null) return;
-
+			
 			try {
 				camera.stopPreview();
 			} catch (Exception e) {
 			}
-
+			
 			Camera.Parameters parameters = camera.getParameters();
 			List<String> focusModes = parameters.getSupportedFocusModes();
 			if (focusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
@@ -297,7 +304,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			} catch (Exception e) {
 			}
 		}
-
+		
 		@Override
 		public void surfaceDestroyed(SurfaceHolder holder) {
 			if (camera != null) {
@@ -307,7 +314,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			}
 		}
 	};
-
+	
 	@Override
 	public void onResume() {
 		super.onResume();
@@ -332,14 +339,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			Tres.setVisibility(View.INVISIBLE);
 			findViewById(R.id.sensorValue).setVisibility(View.INVISIBLE);
 		}
-
-		sm.registerListener(sensorlistener, mGyroSensor, SensorManager.SENSOR_DELAY_NORMAL);
-		sm.registerListener(sensorlistener, mAcceSensor, SensorManager.SENSOR_DELAY_NORMAL);
-		sm.registerListener(sensorlistener, mMagnSensor, SensorManager.SENSOR_DELAY_NORMAL);
+		
+		sm.registerListener(sensorlistener, mGyroSensor, SensorManager.SENSOR_DELAY_GAME);
+		sm.registerListener(sensorlistener, mAcceSensor, SensorManager.SENSOR_DELAY_GAME);
+		sm.registerListener(sensorlistener, mMagnSensor, SensorManager.SENSOR_DELAY_GAME);
+		sm.registerListener(sensorlistener, mGravSensor, SensorManager.SENSOR_DELAY_GAME);
 		handler.sendEmptyMessage(0);
-
+		
 		wm.startScan();
-
+		
 		if (camera != null) {
 			camera.stopPreview();
 			camera.release();
@@ -360,7 +368,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			registerReceiver(receiver, filter);
 		}
 	}
-
+	
 	@Override
 	public void onPause() {
 		sm.unregisterListener(sensorlistener);
@@ -376,11 +384,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			Log.i("@@@", "Preview not paused.");
 		}
 		handler.removeMessages(0);
-
+		
 		unregisterReceiver(receiver);
 		super.onPause();
 	}
-
+	
 	boolean checkPermissions() {
 		int result;
 		List<String> listPermissionsNeeded = new ArrayList<>();
@@ -396,10 +404,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		}
 		return true;
 	}
-
+	
 	SensorEventListener sensorlistener = new SensorEventListener() {
-		float[] gData = new float[3];
-		float[] mData = new float[3];
 		float[] rMat = new float[9];
 		float[] iMat = new float[9];
 		float[] orientation = new float[3];
@@ -415,87 +421,99 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 					if (exts == 0) {
 						exts = event.timestamp;
 					} else {
-						dt2 = (event.timestamp - exts) * NS2S;
-						exts = event.timestamp;
-				//		if (mRoll>=0 && mRoll<90) {
-				//			mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90) + mGyroValues[1]*(mRoll/90)) * dt2 * RAD2DGR;
-				//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90) + mGyroValues[1]*(mRoll/90)) * dt2 * RAD2DGR));
-				//		} else if (mRoll >= 90 && mRoll < 180) {
-				//			mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90) + mGyroValues[1]*(2-mRoll/90)) * dt2 * RAD2DGR;
-				//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90) + mGyroValues[1]*(2-mRoll/90)) * dt2 * RAD2DGR));
-				//		}
+		//				dt2 = (event.timestamp - exts) * NS2S;
+		//				exts = event.timestamp;
+		//				if (mRoll>=0 && mRoll<90) {
+		//					mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(mRoll/90.0)) * dt2 * RAD2DGR;
+		//		//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(mRoll/90.0)) * dt2 * RAD2DGR));
+		//				} else if (mRoll >= 90 && mRoll < 180) {
+		//					mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(2-mRoll/90.0)) * dt2 * RAD2DGR;
+		//		//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(2-mRoll/90.0)) * dt2 * RAD2DGR));
+		//				}
+		//				while (mYaw < 0) {
+		//					mYaw += 360;
+		//				}
+		//				mYaw = mYaw % 360;
 					}
 					break;
-
+				
 				case Sensor.TYPE_ACCELEROMETER:
 					mAcceValues = event.values.clone();
 					if (!acceRunning) {
 						acceRunning = true;
 					}
-					gData = event.values.clone();
 					break;
-
+				
 				case Sensor.TYPE_MAGNETIC_FIELD:
 					mData = event.values.clone();
-
+					mReady = true;
+					break;
+				
+				case Sensor.TYPE_GRAVITY:
+					gData = event.values.clone();
+					gReady = true;
+					break;
+				
 				default:
 					return;
 			}
-
-			if (SensorManager.getRotationMatrix(rMat, iMat, gData, mData)){
-				accYaw = (Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]) + 360) % 360;
+			
+			if (mReady && gReady && SensorManager.getRotationMatrix(rMat, iMat, gData, mData)){
+		//		accYaw = (Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]) + 360) % 360;
+				accYaw = Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]);
 				if (fixMode) {
-					Log.i("@@@", ""+fixCount);
-					if (fixCount == 0) fixYaw = new double[5];
-					if (fixCount < 5) {
+					if (fixCount == 0) fixYaw = new double[MAX_FIX_COUNT];
+					if (fixCount < MAX_FIX_COUNT) {
 						fixYaw[fixCount] = accYaw;
 						fixCount++;
 					} else {
 						double sum = 0;
-						for (int i=0; i<5; i++) {
+						for (int i=0; i<MAX_FIX_COUNT; i++) {
 							sum += fixYaw[i];
 						}
-						mYaw = sum / 5.0;
+						mYaw = sum / (MAX_FIX_COUNT * 1.0);
 						lastSyncTime = System.currentTimeMillis();
 						fixCount = 0;
 						fixMode = false;
 					}
-				} else if (System.currentTimeMillis()-lastSyncTime>0 && mRoll<20 && mRoll>-20 && mPitch<20 && mPitch>-20) {
+				} else if (System.currentTimeMillis()-lastSyncTime>UPDATE_TIME && mRoll<60 && mRoll>40 && mPitch<20 && mPitch>-20) {
 					fixMode = true;
 				};
+				mReady = false;
+				gReady = false;
 			}
-
+			
 			if (gyroRunning && acceRunning){
 				complementaty(event.timestamp);
 			}
 		}
-
+		
 		@Override
 		public void onAccuracyChanged(Sensor sensor, int accuracy) {
 		}
 	};
-
+	
 	void complementaty(double new_ts) {
 		gyroRunning = false;
 		acceRunning = false;
-
+		
 		if (timestamp == 0) {
 			timestamp = new_ts;
 			return;
 		}
 		dt = (new_ts - timestamp) * NS2S;
 		timestamp = new_ts;
-
+		
 		mAccPitch = -Math.atan2(mAcceValues[0], mAcceValues[2]) * RAD2DGR;
 		mAccRoll = Math.atan2(mAcceValues[1], mAcceValues[2]) * RAD2DGR;
-
+		
 		temp = (1/a) * (mAccPitch - mPitch) + mGyroValues[1];
 		mPitch = mPitch + (temp*dt);
-
+		
 		temp = (1/a) * (mAccRoll - mRoll) + mGyroValues[0];
 		mRoll = mRoll + (temp*dt);
 	}
-
+	
 	Handler handler = new Handler(new Handler.Callback() {
 		@Override
 		public boolean handleMessage(Message msg) {
@@ -506,7 +524,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			return false;
 		}
 	});
-
+	
 	private BroadcastReceiver receiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
@@ -522,7 +540,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			}
 		}
 	};
-
+	
 	public void getWIFIScanResult() {
 		scanResult = wm.getScanResults();
 		wifiFingerprint = new JsonObject();
@@ -531,11 +549,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				ScanResult result = scanResult.get(i);
 				wifiFingerprint.addProperty(result.BSSID, result.level);
 			}
-
+			
 			httpTask = new HttpAsyncTask(MainActivity.this);
 			String ip = "https://" + sp.getString("ip", "");
 			Log.i("@@@", "Target IP: " + ip);
-			httpTask.execute(ip, "locate");
+			//	httpTask.execute(ip, "locate");
 		}
 		/* Decision Tree
 		rawAttributes = new Vector<String>();
@@ -559,7 +577,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		*/
 		// Log.i("@@@", "ScanResult : " + scanResult.size());
 	}
-
+	
 	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
@@ -568,8 +586,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				break;
 			case R.id.fab1:
 				anim();
-			//	Intent intent = new Intent(this, preferences.class);
-				Intent intent = new Intent(this, user_interface.class);
+				Intent intent = new Intent(this, preferences.class);
+				//	Intent intent = new Intent(this, user_interface.class);
 				startActivity(intent);
 				break;
 			case R.id.fab2:
@@ -579,7 +597,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				break;
 		}
 	}
-
+	
 	void anim(){
 		if (isOpen) {
 			fab.setImageResource(R.drawable.setting);
@@ -597,18 +615,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			isOpen = true;
 		}
 	}
-
+	
 	class HttpAsyncTask extends AsyncTask<String, Void, String> {
 		MainActivity ui;
 		HttpAsyncTask(MainActivity main) {
 			this.ui = main;
 		}
-
+		
 		@Override
 		protected String doInBackground(String... str) {
 			return POST(str[0], str[1]);
 		}
-
+		
 		@Override
 		protected void onPostExecute(String rec) {
 			super.onPostExecute(rec);
@@ -626,7 +644,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						
 						JsonParser parser = new JsonParser();
 						JsonObject json = (JsonObject) parser.parse(strJson);
-
+						
 						if (json.has("mr")) {
 							if (json.getAsJsonObject("mr").has("error") && json.getAsJsonObject("mr").get("error").toString().replaceAll("\"", "").contains("ERRORv-")) {
 								JsonObject versions = json.getAsJsonObject("mr").getAsJsonObject("versions");
@@ -657,11 +675,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			});
 		}
 	}
-
+	
 	String POST(String url, String mode){
 		String result = "";
 		InputStream is = null;
-
+		
 		try {
 			URL urlCon = new URL(url);
 			HttpsURLConnection httpsCon = (HttpsURLConnection) urlCon.openConnection();
@@ -684,7 +702,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			jsonObject.addProperty("version_app", getPackageManager().getPackageInfo(getPackageName(), 0).versionName);
 			jsonObject.addProperty("version_map", sp.getString("version_map", ""));
 			jsonObject.addProperty("version_location_identifier", sp.getString("version_location_identifier", "0.1"));
-
+			
 			if (sp.getString("requestType", "").equals("mr_user")) {
 				if (mode.equals("locate")) jsonObject.add("user_location", wifiFingerprint);
 				JsonObject dir = new JsonObject();
@@ -694,22 +712,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				jsonObject.add("user_direction", dir);
 				jsonObject.addProperty("user_action", "");
 			}
-
+			
 			json = jsonObject.toString();
 			Log.i("@@@", "SEND: " + json);
 			AddLog.add(MainActivity.this, "SEND", json);
-
+			
 			// httpCon.setRequestProperty("Accept", "application/json");
 			httpCon.setRequestProperty("Content-type", "application/json");
 			httpCon.setRequestProperty("User-Agent","Mozilla/5.0 ( compatible ) ");
 			httpCon.setRequestProperty("Accept","*/*");
 			httpCon.setDoOutput(true);
 			httpCon.setDoInput(true);
-
+			
 			OutputStream os = httpCon.getOutputStream();
 			os.write(json.getBytes("utf-8"));
 			os.flush();
-
+			
 			int status = httpCon.getResponseCode();
 			try {
 				if (status != HttpURLConnection.HTTP_OK) is = httpCon.getErrorStream();
@@ -724,10 +742,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
+		
 		return result;
 	}
-
+	
 	String convertInputStreamToString(InputStream inputStream) throws IOException {
 		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
 		String line = "";
@@ -738,7 +756,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		inputStream.close();
 		return result;
 	}
-
+	
 	/*
 	 * 리턴값은 어떻게 나올지 몰라서 일단 float[] 으로 했고, 필요하신 자료형으로 바꾸셔도 됩니다,
 	 * int[] userPos : 사용자 위치 (지도의 [0]X, [1]Y 좌표)
@@ -747,12 +765,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	 * int[] toonPos : 캐릭터 위치 (지도의 [0]X, [1]Y 좌표)
 	 * float[] toonDirt : 캐릭터 각도 ([0]좌우각도 ...) 이 부분은 정해서 알려주시면 수정하겠습니다.
 	 */
-
+	
 	float[] toonPosition(int[] userPos, float[] userDirt, int[] toonPos, float[] toonDirt) {
-
+		
 		return null;
 	}
-
+	
 	boolean chkInfo(){
 		if (sp.getString("requestType", "").isEmpty() || sp.getString("ip", "").isEmpty() ||
 				sp.getString("userID", "").isEmpty() || sp.getString("passwd", "").isEmpty()) {
@@ -760,11 +778,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		}
 		return true;
 	}
-
+	
 	boolean savemap(String msg) {
 		String FILE_NAME = "map.json";
 		File file = new File(this.getFilesDir(), FILE_NAME);
-
+		
 		try{
 			FileWriter fileWriter = new FileWriter(file.getAbsoluteFile());
 			BufferedWriter bw = new BufferedWriter(fileWriter);
@@ -783,14 +801,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		TrustManager[] trustAllCerts = new TrustManager[] {new X509TrustManager() {
 			@Override
 			public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-		
+			
 			}
-	
+			
 			@Override
 			public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-		
+			
 			}
-	
+			
 			@Override
 			public X509Certificate[] getAcceptedIssuers() {
 				return new X509Certificate[]{};
@@ -805,7 +823,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			e.printStackTrace();
 		}
 	}
-
+	
 	int[] checkVersions(JsonObject vers) throws PackageManager.NameNotFoundException {
 		StringBuffer txt = new StringBuffer();
 		int[] ret = new int[3];
@@ -853,8 +871,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		return false;
 	}
 	*/
-
+	
 	void calibrate_location(int[] userLoc, float[] gData, float aData) {
-
+	
 	}
 }
