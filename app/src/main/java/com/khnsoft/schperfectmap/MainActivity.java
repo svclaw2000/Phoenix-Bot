@@ -96,9 +96,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	long lastSyncTime = -1;
 	double[] fixYaw;
 	int fixCount = 0;
-	final int MAX_FIX_COUNT = 5;
-	final int UPDATE_TIME = 0;
 	boolean fixMode = false;
+	final int MAX_FIX_COUNT = 5;
+	final int UPDATE_TIME = 5000;
+	final int MIN_ROLL = 30;
+	final int MAX_ROLL = 50;
+	final int MIN_PITCH = -20;
+	final int MAX_PITCH = 20;
 	
 	float[] gData = new float[3];
 	float[] mData = new float[3];
@@ -421,19 +425,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 					if (exts == 0) {
 						exts = event.timestamp;
 					} else {
-		//				dt2 = (event.timestamp - exts) * NS2S;
-		//				exts = event.timestamp;
-		//				if (mRoll>=0 && mRoll<90) {
-		//					mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(mRoll/90.0)) * dt2 * RAD2DGR;
-		//		//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(mRoll/90.0)) * dt2 * RAD2DGR));
-		//				} else if (mRoll >= 90 && mRoll < 180) {
-		//					mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(2-mRoll/90.0)) * dt2 * RAD2DGR;
-		//		//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(2-mRoll/90.0)) * dt2 * RAD2DGR));
-		//				}
-		//				while (mYaw < 0) {
-		//					mYaw += 360;
-		//				}
-		//				mYaw = mYaw % 360;
+						dt2 = (event.timestamp - exts) * NS2S;
+						exts = event.timestamp;
+						if (mRoll>=0 && mRoll<90) {
+							mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(mRoll/90.0)) * dt2 * RAD2DGR;
+				//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(mRoll/90.0)) * dt2 * RAD2DGR));
+						} else if (mRoll >= 90 && mRoll < 180) {
+							mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(2-mRoll/90.0)) * dt2 * RAD2DGR;
+				//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(2-mRoll/90.0)) * dt2 * RAD2DGR));
+						}
+						while (mYaw < 0) {
+							mYaw += 360;
+						}
+						mYaw = mYaw % 360;
 					}
 					break;
 				
@@ -459,8 +463,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			}
 			
 			if (mReady && gReady && SensorManager.getRotationMatrix(rMat, iMat, gData, mData)){
-		//		accYaw = (Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]) + 360) % 360;
-				accYaw = Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]);
+				accYaw = (Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]) + 360) % 360;
+		//		accYaw = Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]);
 				if (fixMode) {
 					if (fixCount == 0) fixYaw = new double[MAX_FIX_COUNT];
 					if (fixCount < MAX_FIX_COUNT) {
@@ -476,7 +480,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						fixCount = 0;
 						fixMode = false;
 					}
-				} else if (System.currentTimeMillis()-lastSyncTime>UPDATE_TIME && mRoll<60 && mRoll>40 && mPitch<20 && mPitch>-20) {
+				} else if (System.currentTimeMillis()-lastSyncTime>UPDATE_TIME && mRoll<MAX_ROLL && mRoll>MIN_ROLL && mPitch<MAX_PITCH && mPitch>MIN_PITCH) {
 					fixMode = true;
 				};
 				mReady = false;
@@ -767,6 +771,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	 */
 	
 	float[] toonPosition(int[] userPos, float[] userDirt, int[] toonPos, float[] toonDirt) {
+		double dist = Math.sqrt((userPos[0]-toonPos[0])*(userPos[0]-toonPos[0]) + (userPos[1]-toonPos[1])*(userPos[1]-toonPos[1]));
 		
 		return null;
 	}
