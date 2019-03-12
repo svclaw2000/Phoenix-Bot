@@ -28,8 +28,10 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -132,6 +134,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	TextView Tres;
 	boolean checking;
 	
+	ImageView phoenix;
+	int[] mUserPos = null;
+	int[] mPhoenixPos = null;
+	int mPosX = -1;
+	int mPosY = -1;
+	int mSizeX = -1;
+	int mSizeY = -1;
+	final int DEFAULT_SIZE_X = 320;
+	final int DEFAULT_SIZE_Y = 400;
+	final int DEFAULT_POS_X = 540;
+	final int DEFAULT_POS_Y = 1600;
+	final Double DEFAULT_YAW = 237.0;
+	final Double DEFAULT_ROLL = 90.0;
+	
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -208,10 +225,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		if (chkInfo()) {
 			initHttps();
 			httpTask = new HttpAsyncTask(MainActivity.this);
-			String ip = "https://" + sp.getString("ip", "");
+			String ip = "http://" + sp.getString("ip", "");
 			Log.i("@@@", "Target IP: " + ip);
 			httpTask.execute(ip, "onCreate");
 		}
+		
+		// Initialize Phoenix character
+		phoenix = new ImageView(this);
+		phoenix.setImageResource(R.drawable.phoenix);
+		phoenix.setLayoutParams(new ViewGroup.LayoutParams(DEFAULT_SIZE_X, DEFAULT_SIZE_Y));
+		((FrameLayout) findViewById(R.id.mainView)).addView(phoenix);
 
 		/* Decision Tree
 		FILE_NAME = "identifier.md";
@@ -344,10 +367,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			findViewById(R.id.sensorValue).setVisibility(View.INVISIBLE);
 		}
 		
-		sm.registerListener(sensorlistener, mGyroSensor, SensorManager.SENSOR_DELAY_GAME);
-		sm.registerListener(sensorlistener, mAcceSensor, SensorManager.SENSOR_DELAY_GAME);
-		sm.registerListener(sensorlistener, mMagnSensor, SensorManager.SENSOR_DELAY_GAME);
-		sm.registerListener(sensorlistener, mGravSensor, SensorManager.SENSOR_DELAY_GAME);
+		sm.registerListener(sensorlistener, mGyroSensor, SensorManager.SENSOR_DELAY_UI);
+		sm.registerListener(sensorlistener, mAcceSensor, SensorManager.SENSOR_DELAY_UI);
+		sm.registerListener(sensorlistener, mMagnSensor, SensorManager.SENSOR_DELAY_UI);
+		sm.registerListener(sensorlistener, mGravSensor, SensorManager.SENSOR_DELAY_UI);
 		handler.sendEmptyMessage(0);
 		
 		wm.startScan();
@@ -429,10 +452,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						exts = event.timestamp;
 						if (mRoll>=0 && mRoll<90) {
 							mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(mRoll/90.0)) * dt2 * RAD2DGR;
-				//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(mRoll/90.0)) * dt2 * RAD2DGR));
+							//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(mRoll/90.0)) * dt2 * RAD2DGR));
 						} else if (mRoll >= 90 && mRoll < 180) {
 							mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(2-mRoll/90.0)) * dt2 * RAD2DGR;
-				//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(2-mRoll/90.0)) * dt2 * RAD2DGR));
+							//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(2-mRoll/90.0)) * dt2 * RAD2DGR));
 						}
 						while (mYaw < 0) {
 							mYaw += 360;
@@ -464,7 +487,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			
 			if (mReady && gReady && SensorManager.getRotationMatrix(rMat, iMat, gData, mData)){
 				accYaw = (Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]) + 360) % 360;
-		//		accYaw = Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]);
 				if (fixMode) {
 					if (fixCount == 0) fixYaw = new double[MAX_FIX_COUNT];
 					if (fixCount < MAX_FIX_COUNT) {
@@ -489,6 +511,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			
 			if (gyroRunning && acceRunning){
 				complementaty(event.timestamp);
+				toonPosition(mUserPos, new Double[] {mYaw, mPitch, mRoll}, mPhoenixPos, null);
 			}
 		}
 		
@@ -555,9 +578,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			}
 			
 			httpTask = new HttpAsyncTask(MainActivity.this);
-			String ip = "https://" + sp.getString("ip", "");
+			String ip = "http://" + sp.getString("ip", "");
 			Log.i("@@@", "Target IP: " + ip);
-			//	httpTask.execute(ip, "locate");
+			httpTask.execute(ip, "locate");
 		}
 		/* Decision Tree
 		rawAttributes = new Vector<String>();
@@ -650,7 +673,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						JsonObject json = (JsonObject) parser.parse(strJson);
 						
 						if (json.has("mr")) {
-							if (json.getAsJsonObject("mr").has("error") && json.getAsJsonObject("mr").get("error").toString().replaceAll("\"", "").contains("ERRORv-")) {
+							if (json.getAsJsonObject("mr").has("error") && json.getAsJsonObject("mr")
+									.get("error").toString().replaceAll("\"", "").contains("ERRORv-")) {
 								JsonObject versions = json.getAsJsonObject("mr").getAsJsonObject("versions");
 								int[] ver = checkVersions(versions);
 								Log.i("@@@", "version: " + ver[0] + ver[1] + ver[2]);
@@ -668,8 +692,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 								}*/
 							}
 							if (json.getAsJsonObject("mr").has("users")) {
-								JsonObject userLocation = (JsonObject)((JsonObject) json.getAsJsonObject("mr").getAsJsonArray("users").get(0)).getAsJsonArray("location").get(0);
+								JsonObject userLocation = (JsonObject)((JsonObject) json.getAsJsonObject("mr").getAsJsonArray("users").get(0))
+										.getAsJsonArray("location").get(0);
 								Tres.setText(userLocation.get("map").toString() + userLocation.get("tile").toString());
+								String[] tile = userLocation.get("tile").toString().replace("\"", "").split("/");
+								mUserPos = new int[] {Integer.parseInt(tile[0]), Integer.parseInt(tile[1])};
+								String[] phoenixLocation = ((JsonObject)json.getAsJsonObject("mr").getAsJsonArray("systems").get(0))
+										.getAsJsonObject("location").get("tile").toString().replace("\"", "").split("/");
+								mPhoenixPos = new int[] {Integer.parseInt(phoenixLocation[0]), Integer.parseInt(phoenixLocation[1])};
+							}
+							if (json.getAsJsonObject("mr").has("setPos")) {
+								mPosX = Integer.parseInt(json.getAsJsonObject("mr").get("posX").toString());
+								mPosY = Integer.parseInt(json.getAsJsonObject("mr").get("posY").toString());
+							}
+							if (json.getAsJsonObject("mr").has("setSize")) {
+								mSizeX = Integer.parseInt(json.getAsJsonObject("mr").get("sizeX").toString());
+								mSizeY = Integer.parseInt(json.getAsJsonObject("mr").get("sizeY").toString());
 							}
 						}
 					} catch (Exception e) {
@@ -686,14 +724,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		
 		try {
 			URL urlCon = new URL(url);
-			HttpsURLConnection httpsCon = (HttpsURLConnection) urlCon.openConnection();
-			httpsCon.setHostnameVerifier(new HostnameVerifier() {
-				@Override
-				public boolean verify(String hostname, SSLSession session) {
-					return true;
-				}
-			});
-			HttpURLConnection httpCon = httpsCon;
+			//	HttpsURLConnection httpsCon = (HttpsURLConnection) urlCon.openConnection();
+			//	httpsCon.setHostnameVerifier(new HostnameVerifier() {
+			//		@Override
+			//		public boolean verify(String hostname, SSLSession session) {
+			//			return true;
+			//		}
+			//	});
+			//	HttpURLConnection httpCon = httpsCon;
+			HttpURLConnection httpCon = (HttpURLConnection) urlCon.openConnection();
 			String json = "";
 			WifiInfo info = wm.getConnectionInfo();
 			int ipAddress = info.getIpAddress();
@@ -761,19 +800,48 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		return result;
 	}
 	
-	/*
-	 * 리턴값은 어떻게 나올지 몰라서 일단 float[] 으로 했고, 필요하신 자료형으로 바꾸셔도 됩니다,
-	 * int[] userPos : 사용자 위치 (지도의 [0]X, [1]Y 좌표)
-	 * float[] userDirt : 사용자 각도 ([0]좌우각도, [1]상하각도, [2]화면회전각도)
-	 *                    일단은 기기에서 구해지는 각도
-	 * int[] toonPos : 캐릭터 위치 (지도의 [0]X, [1]Y 좌표)
-	 * float[] toonDirt : 캐릭터 각도 ([0]좌우각도 ...) 이 부분은 정해서 알려주시면 수정하겠습니다.
-	 */
-	
-	float[] toonPosition(int[] userPos, float[] userDirt, int[] toonPos, float[] toonDirt) {
-		double dist = Math.sqrt((userPos[0]-toonPos[0])*(userPos[0]-toonPos[0]) + (userPos[1]-toonPos[1])*(userPos[1]-toonPos[1]));
+	void toonPosition(int[] userPos, Double[] userDirt, int[] toonPos, Double[] toonDirt) {
+		ViewGroup.LayoutParams params = phoenix.getLayoutParams();
 		
-		return null;
+		float sizeX = DEFAULT_SIZE_X;
+		float sizeY = DEFAULT_SIZE_Y;
+		
+		if (mSizeX!=-1 && mSizeY!=-1) {
+			params.width = mSizeX;
+			params.height = mSizeY;
+		} else if (userPos!=null && mPhoenixPos!=null) {
+			double dist = Math.sqrt((userPos[0]-toonPos[0])*(userPos[0]-toonPos[0]) + (userPos[1]-toonPos[1])*(userPos[1]-toonPos[1])) - 3;
+			Log.i("@@@", String.format("dist: %s", dist));
+			if (dist > 0) {
+				while (dist > 0.1) {
+					sizeX *= 0.98;
+					sizeY *= 0.98;
+					dist -= 0.1;
+				}
+			} else if (dist < 0) {
+				while (dist < -0.1) {
+					sizeX *= 1.02;
+					sizeY *= 1.02;
+					dist += 0.1;
+				}
+			}
+			params.width = Math.round(sizeX);
+			params.height = Math.round(sizeY);
+		}
+		
+		float centerPosX = (float) (DEFAULT_POS_X + (DEFAULT_YAW - userDirt[0]) * 25);
+		float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 32);
+		
+		Log.i("@@@", String.format("X: %s, Y: %s", centerPosX, centerPosY));
+		
+		phoenix.setLayoutParams(params);
+		if (centerPosX < 0 || centerPosX > 1080 || centerPosY < 0 || centerPosY > 1920) {
+			phoenix.setVisibility(View.INVISIBLE);
+		} else {
+			phoenix.setVisibility(View.VISIBLE);
+			phoenix.setX(centerPosX - params.width / 2);
+			phoenix.setY(centerPosY - params.height / 2);
+		}
 	}
 	
 	boolean chkInfo(){
@@ -835,19 +903,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		if (!vers.get("version_app").toString().replaceAll("\"", "").equals(getPackageManager().getPackageInfo(getPackageName(), 0).versionName)) {
 			txt.append("어플");
 			ret[0] = 1;
-			Log.i("@@@", "version_app: " + vers.get("version_app").toString().replaceAll("\"", "") + ", " + getPackageManager().getPackageInfo(getPackageName(), 0).versionName);
+			Log.i("@@@", "version_app: " + vers.get("version_app").toString().replaceAll("\"", "") + ", "
+					+ getPackageManager().getPackageInfo(getPackageName(), 0).versionName);
 		} else ret[0] = 0;
 		if (!vers.get("version_map").toString().replaceAll("\"", "").equals(sp.getString("version_map", ""))) {
 			if (txt.length()==0) txt.append("지도");
 			else txt.append(", 지도");
 			ret[1] = 1;
-			Log.i("@@@", "version_map: " + vers.get("version_map").toString().replaceAll("\"", "") + ", " + sp.getString("version_map", "0.1"));
+			Log.i("@@@", "version_map: " + vers.get("version_map").toString().replaceAll("\"", "") + ", "
+					+ sp.getString("version_map", "0.1"));
 		} else ret[1] = 0;
 		if (!vers.get("version_location_identifier").toString().replaceAll("\"", "").equals(sp.getString("version_location_identifier", "0.1"))) {
 			if (txt.length()==0) txt.append("인식기");
 			else txt.append(", 인식기");
 			ret[2] = 1;
-			Log.i("@@@", "version_location_identifier: " + vers.get("version_location_identifier").toString().replaceAll("\"", "") + ", " + sp.getString("version_location_identifier", "0.1"));
+			Log.i("@@@", "version_location_identifier: " + vers.get("version_location_identifier").toString().replaceAll("\"", "") + ", "
+					+ sp.getString("version_location_identifier", "0.1"));
 		} else ret[2] = 0;
 		if (txt.length()!=0) {
 			txt.append("의 버전이 낮습니다.");
