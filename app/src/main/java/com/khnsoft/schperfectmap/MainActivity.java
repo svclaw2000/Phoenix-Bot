@@ -701,14 +701,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 										.getAsJsonObject("location").get("tile").toString().replace("\"", "").split("/");
 								mPhoenixPos = new int[] {Integer.parseInt(phoenixLocation[0]), Integer.parseInt(phoenixLocation[1])};
 							}
-							if (json.getAsJsonObject("mr").has("setPos")) {
-								mPosX = Integer.parseInt(json.getAsJsonObject("mr").get("posX").toString());
-								mPosY = Integer.parseInt(json.getAsJsonObject("mr").get("posY").toString());
-							}
-							if (json.getAsJsonObject("mr").has("setSize")) {
-								mSizeX = Integer.parseInt(json.getAsJsonObject("mr").get("sizeX").toString());
-								mSizeY = Integer.parseInt(json.getAsJsonObject("mr").get("sizeY").toString());
-							}
+					//		if (json.getAsJsonObject("mr").has("setPos")) {
+					//			mPosX = Integer.parseInt(json.getAsJsonObject("mr").get("posX").toString());
+					//			mPosY = Integer.parseInt(json.getAsJsonObject("mr").get("posY").toString());
+					//		}
+					//		if (json.getAsJsonObject("mr").has("setSize")) {
+					//			mSizeX = Integer.parseInt(json.getAsJsonObject("mr").get("sizeX").toString());
+					//			mSizeY = Integer.parseInt(json.getAsJsonObject("mr").get("sizeY").toString());
+					//		}
 						}
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -801,35 +801,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	}
 	
 	void toonPosition(int[] userPos, Double[] userDirt, int[] toonPos, Double[] toonDirt) {
+		if (userPos==null || toonPos==null) return;
+		
 		ViewGroup.LayoutParams params = phoenix.getLayoutParams();
 		
 		float sizeX = DEFAULT_SIZE_X;
 		float sizeY = DEFAULT_SIZE_Y;
 		
-		if (mSizeX!=-1 && mSizeY!=-1) {
-			params.width = mSizeX;
-			params.height = mSizeY;
-		} else if (userPos!=null && mPhoenixPos!=null) {
-			double dist = Math.sqrt((userPos[0]-toonPos[0])*(userPos[0]-toonPos[0]) + (userPos[1]-toonPos[1])*(userPos[1]-toonPos[1])) - 3;
-			Log.i("@@@", String.format("dist: %s", dist));
-			if (dist > 0) {
-				while (dist > 0.1) {
-					sizeX *= 0.98;
-					sizeY *= 0.98;
-					dist -= 0.1;
-				}
-			} else if (dist < 0) {
-				while (dist < -0.1) {
-					sizeX *= 1.02;
-					sizeY *= 1.02;
-					dist += 0.1;
-				}
+	//	if (mSizeX!=-1 && mSizeY!=-1) {
+	//		params.width = mSizeX;
+	//		params.height = mSizeY;
+	//	} else
+		double dist = Math.sqrt((userPos[0]-toonPos[0])*(userPos[0]-toonPos[0]) + (userPos[1]-toonPos[1])*(userPos[1]-toonPos[1])) - 3;
+		Log.i("@@@", String.format("dist: %s", dist));
+		if (dist > 0) {
+			while (dist > 0.1) {
+				sizeX *= 0.98;
+				sizeY *= 0.98;
+				dist -= 0.1;
 			}
-			params.width = Math.round(sizeX);
-			params.height = Math.round(sizeY);
+		} else if (dist < 0) {
+			while (dist < -0.1) {
+				sizeX *= 1.02;
+				sizeY *= 1.02;
+				dist += 0.1;
+			}
 		}
+		params.width = Math.round(sizeX);
+		params.height = Math.round(sizeY);
 		
-		float centerPosX = (float) (DEFAULT_POS_X + (DEFAULT_YAW - userDirt[0]) * 25);
+		// 위치에 의한 캐릭터 위치 조정
+		double fixedYaw = DEFAULT_YAW + Math.toDegrees(Math.atan2(toonPos[1]-userPos[1], userPos[0]-toonPos[0]));
+		Log.i("@@@", String.format("Default yaw: %s, Fixed yaw: %s", DEFAULT_YAW, fixedYaw));
+		
+		// 각도에 의한 캐릭터 위치 조정
+		float centerPosX = (float) (DEFAULT_POS_X + (fixedYaw - userDirt[0]) * 25);
 		float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 32);
 		
 		Log.i("@@@", String.format("X: %s, Y: %s", centerPosX, centerPosY));
