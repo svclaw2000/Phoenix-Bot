@@ -225,7 +225,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		if (chkInfo()) {
 			initHttps();
 			httpTask = new HttpAsyncTask(MainActivity.this);
-			String ip = "http://" + sp.getString("ip", "");
+			String ip = "https://" + sp.getString("ip", "");
 			Log.i("@@@", "Target IP: " + ip);
 			httpTask.execute(ip, "onCreate");
 		}
@@ -578,7 +578,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			}
 			
 			httpTask = new HttpAsyncTask(MainActivity.this);
-			String ip = "http://" + sp.getString("ip", "");
+			String ip = "https://" + sp.getString("ip", "");
 			Log.i("@@@", "Target IP: " + ip);
 			httpTask.execute(ip, "locate");
 		}
@@ -697,7 +697,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 								Tres.setText(userLocation.get("map").toString() + userLocation.get("tile").toString());
 								String[] tile = userLocation.get("tile").toString().replace("\"", "").split("/");
 								mUserPos = new int[] {Integer.parseInt(tile[0]), Integer.parseInt(tile[1])};
-								String[] phoenixLocation = ((JsonObject)json.getAsJsonObject("mr").getAsJsonArray("systems").get(0))
+								String[] phoenixLocation = ((JsonObject)json.getAsJsonObject("mr").getAsJsonArray("systems").get(1))
 										.getAsJsonObject("location").get("tile").toString().replace("\"", "").split("/");
 								mPhoenixPos = new int[] {Integer.parseInt(phoenixLocation[0]), Integer.parseInt(phoenixLocation[1])};
 							}
@@ -724,15 +724,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		
 		try {
 			URL urlCon = new URL(url);
-			//	HttpsURLConnection httpsCon = (HttpsURLConnection) urlCon.openConnection();
-			//	httpsCon.setHostnameVerifier(new HostnameVerifier() {
-			//		@Override
-			//		public boolean verify(String hostname, SSLSession session) {
-			//			return true;
-			//		}
-			//	});
-			//	HttpURLConnection httpCon = httpsCon;
-			HttpURLConnection httpCon = (HttpURLConnection) urlCon.openConnection();
+			HttpsURLConnection httpsCon = (HttpsURLConnection) urlCon.openConnection();
+			httpsCon.setHostnameVerifier(new HostnameVerifier() {
+				@Override
+				public boolean verify(String hostname, SSLSession session) {
+					return true;
+				}
+			});
+			HttpURLConnection httpCon = httpsCon;
+	//		HttpURLConnection httpCon = (HttpURLConnection) urlCon.openConnection();
 			String json = "";
 			WifiInfo info = wm.getConnectionInfo();
 			int ipAddress = info.getIpAddress();
