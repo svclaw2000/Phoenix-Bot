@@ -148,6 +148,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	final Double DEFAULT_YAW = 237.0;
 	final Double DEFAULT_ROLL = 90.0;
 	
+	final  HostnameVerifier DO_NOT_VERIFY = new HostnameVerifier() {
+		public boolean verify(String hostname, SSLSession session) {
+			return true;
+		}
+	};
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -223,7 +228,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		}
 		
 		if (chkInfo()) {
-			initHttps();
 			httpTask = new HttpAsyncTask(MainActivity.this);
 			String ip = "https://" + sp.getString("ip", "");
 			Log.i("@@@", "Target IP: " + ip);
@@ -723,14 +727,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		InputStream is = null;
 		
 		try {
+			initHttps();
 			URL urlCon = new URL(url);
 			HttpsURLConnection httpsCon = (HttpsURLConnection) urlCon.openConnection();
-			httpsCon.setHostnameVerifier(new HostnameVerifier() {
-				@Override
-				public boolean verify(String hostname, SSLSession session) {
-					return true;
-				}
-			});
+			httpsCon.setHostnameVerifier(DO_NOT_VERIFY);
 			HttpURLConnection httpCon = httpsCon;
 	//		HttpURLConnection httpCon = (HttpURLConnection) urlCon.openConnection();
 			String json = "";
@@ -814,6 +814,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	//	} else
 		double dist = Math.sqrt((userPos[0]-toonPos[0])*(userPos[0]-toonPos[0]) + (userPos[1]-toonPos[1])*(userPos[1]-toonPos[1])) - 3;
 		Log.i("@@@", String.format("dist: %s", dist));
+		Log.i("@@@", String.format("toon: [%d/%d], user: [%d/%d]", toonPos[0], toonPos[1], userPos[0], userPos[1]));
 		if (dist > 0) {
 			while (dist > 0.1) {
 				sizeX *= 0.98;
@@ -832,6 +833,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		
 		// 위치에 의한 캐릭터 위치 조정
 		double fixedYaw = DEFAULT_YAW + Math.toDegrees(Math.atan2(toonPos[1]-userPos[1], userPos[0]-toonPos[0]));
+		while (fixedYaw<0 || fixedYaw>360) {
+			fixedYaw += 360;
+			fixedYaw %= 360;
+		}
 		Log.i("@@@", String.format("Default yaw: %s, Fixed yaw: %s", DEFAULT_YAW, fixedYaw));
 		
 		// 각도에 의한 캐릭터 위치 조정
