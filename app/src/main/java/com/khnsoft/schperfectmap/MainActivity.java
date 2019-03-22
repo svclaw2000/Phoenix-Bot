@@ -9,6 +9,9 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiInfo;
@@ -50,6 +53,7 @@ import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import javax.net.ssl.HostnameVerifier;
@@ -68,29 +72,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	SurfaceHolder cameraHolder;
 	LinearLayout background;
 	
-	/*
+	// sensor
 	SensorManager sm;
 	Sensor mGyroSensor;
 	Sensor mAcceSensor;
 	Sensor mMagnSensor;
 	Sensor mGravSensor;
-	*/
 	
 	double mYaw, mPitch, mRoll;
 	double mAccPitch, mAccRoll;
-	TextView yaw;
-	TextView pitch;
-	TextView roll;
-	final int MIN_ROLL = 30;
-	final int MAX_ROLL = 50;
-	final int MIN_PITCH = -20;
-	final int MAX_PITCH = 20;
-	Compass mCompass;
-	final float SENSITIVE_MIN_YAW = 0.1F;
-	final float SENSITIVE_MIN_PITCH = 0.1F;
-	final float SENSITIVE_MIN_ROLL = 0.1F;
-	
-	/*
 	double timestamp;
 	double temp;
 	float a = 0.2f;
@@ -98,7 +88,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	double RAD2DGR = 180.0 / Math.PI;
 	double exts = 0;
 	double dt2;
-	static final float NS2S = 1.0f/1000000000.0f;
+	static final float NS2S = 1.0f / 1000000000.0f;
+	TextView yaw;
+	TextView pitch;
+	TextView roll;
 	boolean gyroRunning = false;
 	boolean acceRunning = false;
 	float[] mGyroValues = new float[3];
@@ -107,14 +100,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	double[] fixYaw;
 	int fixCount = 0;
 	boolean fixMode = false;
-	final int MAX_FIX_COUNT = 5;
-	final int UPDATE_TIME = 5000;
+	final int MAX_FIX_COUNT = 3;
+	final int UPDATE_TIME = 300;
+	final int MIN_ROLL = 30;
+	final int MAX_ROLL = 50;
+	final int MIN_PITCH = -20;
+	final int MAX_PITCH = 20;
 	
 	float[] gData = new float[3];
 	float[] mData = new float[3];
 	boolean gReady = false;
 	boolean mReady = false;
-	*/
 	
 	SharedPreferences sp;
 	SharedPreferences.Editor editor;
@@ -135,9 +131,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	// realDecisionTree dTree = null;
 	// Vector<String> rawAttributes;
 	// Vector<Double> rawValues;
-	
 	JsonObject wifiFingerprint;
 	TextView Tres;
+	boolean checking;
 	
 	ImageView phoenix;
 	int[] mUserPos = null;
@@ -146,11 +142,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	int mPosY = -1;
 	int mSizeX = -1;
 	int mSizeY = -1;
+	int fixed_default_yaw = -1;
 	final int DEFAULT_SIZE_X = 320;
 	final int DEFAULT_SIZE_Y = 400;
 	final int DEFAULT_POS_X = 540;
-	final int DEFAULT_POS_Y = 1600;
-	final Double DEFAULT_YAW = 237.0;
+	final int DEFAULT_POS_Y = 1200;
+	final Double[] DEFAULT_YAW = {237.0, 0.0, 0.0, 0.0, 190.57,    // 0-4
+			195.45, 216.96, 277.63, 251.24, 244.26,                // 5-9
+			263.04, 275.30, 233.52, 213.76, 210.58};            // 10-14
 	final Double DEFAULT_ROLL = 90.0;
 	
 	final HostnameVerifier DO_NOT_VERIFY = new HostnameVerifier() {
@@ -176,17 +175,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			}
 		});
 		
+		sm = (SensorManager) getSystemService(SENSOR_SERVICE);
 		yaw = findViewById(R.id.yaw);
 		pitch = findViewById(R.id.pitch);
 		roll = findViewById(R.id.roll);
-		
-		/*
-		sm = (SensorManager) getSystemService(SENSOR_SERVICE);
 		mGyroSensor = sm.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 		mAcceSensor = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 		mMagnSensor = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 		mGravSensor = sm.getDefaultSensor(Sensor.TYPE_GRAVITY);
-		*/
 		
 		Tres = findViewById(R.id.result);
 		
@@ -247,8 +243,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		phoenix.setImageResource(R.drawable.phoenix);
 		phoenix.setLayoutParams(new ViewGroup.LayoutParams(DEFAULT_SIZE_X, DEFAULT_SIZE_Y));
 		((FrameLayout) findViewById(R.id.mainView)).addView(phoenix);
-		
-		mCompass = Compass.newInstance(this, mCompassListener);
 
 		/* Decision Tree
 		FILE_NAME = "identifier.md";
@@ -282,15 +276,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			}
 		} */
 	}
-	
-	Compass.CompassListener mCompassListener = new Compass.CompassListener() {
-		@Override
-		public void onOrientationChanged(float azimuth, float pitch, float roll) {
-			mYaw = azimuth;
-			mPitch = pitch;
-			mRoll = roll;
-		}
-	};
 	
 	Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
 		@Override
@@ -390,14 +375,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			findViewById(R.id.sensorValue).setVisibility(View.INVISIBLE);
 		}
 		
-		if (mCompass != null) mCompass.start(SENSITIVE_MIN_YAW, SENSITIVE_MIN_PITCH, SENSITIVE_MIN_ROLL);
-		
-		/*
-		 * sm.registerListener(sensorlistener, mGyroSensor, SensorManager.SENSOR_DELAY_UI);
-		 * sm.registerListener(sensorlistener, mAcceSensor, SensorManager.SENSOR_DELAY_UI);
-		 * sm.registerListener(sensorlistener, mMagnSensor, SensorManager.SENSOR_DELAY_UI);
-		 * sm.registerListener(sensorlistener, mGravSensor, SensorManager.SENSOR_DELAY_UI);
-		 */
+		sm.registerListener(sensorlistener, mGyroSensor, SensorManager.SENSOR_DELAY_UI);
+		sm.registerListener(sensorlistener, mAcceSensor, SensorManager.SENSOR_DELAY_UI);
+		sm.registerListener(sensorlistener, mMagnSensor, SensorManager.SENSOR_DELAY_UI);
+		sm.registerListener(sensorlistener, mGravSensor, SensorManager.SENSOR_DELAY_UI);
 		handler.sendEmptyMessage(0);
 		
 		wm.startScan();
@@ -425,8 +406,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	
 	@Override
 	public void onPause() {
-		/* sm.unregisterListener(sensorlistener); */
-		if (mCompass != null) mCompass.stop();
+		sm.unregisterListener(sensorlistener);
 		try {
 			camera.stopPreview();
 			if (camera != null) {
@@ -460,12 +440,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		return true;
 	}
 	
-	/*
 	SensorEventListener sensorlistener = new SensorEventListener() {
 		float[] rMat = new float[9];
 		float[] iMat = new float[9];
 		float[] orientation = new float[3];
 		double accYaw;
+		
 		@Override
 		public void onSensorChanged(SensorEvent event) {
 			switch (event.sensor.getType()) {
@@ -479,12 +459,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 					} else {
 						dt2 = (event.timestamp - exts) * NS2S;
 						exts = event.timestamp;
-						if (mRoll>=0 && mRoll<90) {
-							mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(mRoll/90.0)) * dt2 * RAD2DGR;
-							//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(mRoll/90.0)) * dt2 * RAD2DGR));
+						if (mRoll >= 0 && mRoll < 90) {
+							mYaw = mYaw - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (mRoll / 90.0)) * dt2 * RAD2DGR;
 						} else if (mRoll >= 90 && mRoll < 180) {
-							mYaw = mYaw - (mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(2-mRoll/90.0)) * dt2 * RAD2DGR;
-							//			Log.i("@@@", ""+((mGyroValues[2]*(1-mRoll/90.0) + mGyroValues[1]*(2-mRoll/90.0)) * dt2 * RAD2DGR));
+							mYaw = mYaw - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (2 - mRoll / 90.0)) * dt2 * RAD2DGR;
 						}
 						while (mYaw < 0) {
 							mYaw += 360;
@@ -514,7 +492,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 					return;
 			}
 			
-			if (mReady && gReady && SensorManager.getRotationMatrix(rMat, iMat, gData, mData)){
+			if (mReady && gReady && SensorManager.getRotationMatrix(rMat, iMat, gData, mData)) {
 				accYaw = (Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]) + 360) % 360;
 				if (fixMode) {
 					if (fixCount == 0) fixYaw = new double[MAX_FIX_COUNT];
@@ -523,7 +501,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						fixCount++;
 					} else {
 						double sum = 0;
-						for (int i=0; i<MAX_FIX_COUNT; i++) {
+						for (int i = 0; i < MAX_FIX_COUNT; i++) {
 							sum += fixYaw[i];
 						}
 						mYaw = sum / (MAX_FIX_COUNT * 1.0);
@@ -531,16 +509,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						fixCount = 0;
 						fixMode = false;
 					}
-				} else if (System.currentTimeMillis()-lastSyncTime>UPDATE_TIME && mRoll<MAX_ROLL && mRoll>MIN_ROLL && mPitch<MAX_PITCH && mPitch>MIN_PITCH) {
+				} else if (System.currentTimeMillis() - lastSyncTime > UPDATE_TIME &&
+						mRoll < MAX_ROLL && mRoll > MIN_ROLL &&
+						mPitch < MAX_PITCH && mPitch > MIN_PITCH) {
 					fixMode = true;
-				};
+				}
 				mReady = false;
 				gReady = false;
 			}
 			
-			if (gyroRunning && acceRunning){
+			if (gyroRunning && acceRunning) {
 				complementaty(event.timestamp);
-				toonPosition(mUserPos, new Double[] {mYaw, mPitch, mRoll}, mPhoenixPos, null);
+				toonPosition(mUserPos, new Double[]{mYaw, mPitch, mRoll}, mPhoenixPos, null);
 			}
 		}
 		
@@ -563,13 +543,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		mAccPitch = -Math.atan2(mAcceValues[0], mAcceValues[2]) * RAD2DGR;
 		mAccRoll = Math.atan2(mAcceValues[1], mAcceValues[2]) * RAD2DGR;
 		
-		temp = (1/a) * (mAccPitch - mPitch) + mGyroValues[1];
-		mPitch = mPitch + (temp*dt);
+		temp = (1 / a) * (mAccPitch - mPitch) + mGyroValues[1];
+		mPitch = mPitch + (temp * dt);
 		
-		temp = (1/a) * (mAccRoll - mRoll) + mGyroValues[0];
-		mRoll = mRoll + (temp*dt);
+		temp = (1 / a) * (mAccRoll - mRoll) + mGyroValues[0];
+		mRoll = mRoll + (temp * dt);
 	}
-	*/
 	
 	Handler handler = new Handler(new Handler.Callback() {
 		@Override
@@ -859,12 +838,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		params.height = Math.round(sizeY);
 		
 		// 위치에 의한 캐릭터 위치 조정
-		double fixedYaw = DEFAULT_YAW + Math.toDegrees(Math.atan2(toonPos[1] - userPos[1], userPos[0] - toonPos[0]));
+		double fixedYaw = DEFAULT_YAW[userPos[0]] + Math.toDegrees(Math.atan2(toonPos[1] - userPos[1], userPos[0] - toonPos[0]));
 		while (fixedYaw < 0 || fixedYaw > 360) {
 			fixedYaw += 360;
 			fixedYaw %= 360;
 		}
-		Log.i("@@@", String.format("Default yaw: %s, Fixed yaw: %s", DEFAULT_YAW, fixedYaw));
+		Log.i("@@@", String.format("Default yaw: %s, Fixed yaw: %s", DEFAULT_YAW[userPos[0]], fixedYaw));
 		
 		// 각도에 의한 캐릭터 위치 조정
 		float centerPosX = (float) (DEFAULT_POS_X + (fixedYaw - userDirt[0]) * 25);
