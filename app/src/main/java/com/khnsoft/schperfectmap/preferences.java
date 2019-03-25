@@ -38,10 +38,10 @@ public class preferences extends AppCompatActivity {
 		sp = getSharedPreferences("settings", MODE_PRIVATE);
 		editor = sp.edit();
 		
-		if (sp.getString("requestType", "").equals("mr_admin")) check_admin.setChecked(true);
+		if (sp.getString("requestType", "mr_admin").equals("mr_admin")) check_admin.setChecked(true);
 		else if (sp.getString("requestType", "").equals("mr_user")) check_user.setChecked(true);
 		
-		ip_edit.setText(sp.getString("ip", "114.71.220.20"));
+		ip_edit.setText(sp.getString("ip", "114.71.220.20:8001/bytecellmr"));
 		id_edit.setText(sp.getString("userID", "admin"));
 		pw_edit.setText(sp.getString("passwd", "admin1234"));
 		direction.setChecked(sp.getBoolean("direction", true));
