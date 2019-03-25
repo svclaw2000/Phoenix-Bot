@@ -141,10 +141,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	ImageView phoenix;
 	int[] mUserPos = null;
 	int[] mPhoenixPos = null;
-	int mPosX = -1;
-	int mPosY = -1;
-	int mSizeX = -1;
-	int mSizeY = -1;
 	Double fixed_default_yaw = -1.0;
 	final int DEFAULT_SIZE_X = 320;
 	final int DEFAULT_SIZE_Y = 400;
@@ -154,6 +150,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			195.45, 216.96, 277.63, 251.24, 244.26,                // 5-9
 			263.04, 275.30, 233.52, 213.76, 210.58};            // 10-14
 	final Double DEFAULT_ROLL = 90.0;
+
+	TextView room;
+	final String[][] rooms = {
+			{},{},{},{},
+			{"ML313", "Server Room"},		// 4
+			{"", ""},							// 5
+			{"ML313", ""},						// 6
+			{"Prof. Y.S.Jeong", "ML304"},	// 7
+			{"", ""},							// 8
+			{"Prof. J.H.Kim", ""},			// 9
+			{"Prof. J.Y.Woo", ""},			// 10
+			{"Prof. Y.M.Kim", "ML304"},		// 11
+			{"Prof. J.K.Jo", "R.A."},		// 12
+			{"", ""},							// 13
+			{"", "Conference Room"}			// 14
+	};
 	
 	final HostnameVerifier DO_NOT_VERIFY = new HostnameVerifier() {
 		public boolean verify(String hostname, SSLSession session) {
@@ -248,7 +260,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		phoenix = new ImageView(this);
 		phoenix.setImageResource(R.drawable.phoenix);
 		phoenix.setLayoutParams(new ViewGroup.LayoutParams(DEFAULT_SIZE_X, DEFAULT_SIZE_Y));
+		phoenix.setVisibility(View.INVISIBLE);
 		((FrameLayout) findViewById(R.id.mainView)).addView(phoenix);
+
+		room = new TextView(this);
+		room.setLayoutParams(new ViewGroup.LayoutParams(200, 100));
+		room.setVisibility(View.INVISIBLE);
+		((FrameLayout) findViewById(R.id.mainView)).addView(room);
 
 		/* Decision Tree
 		FILE_NAME = "identifier.md";
@@ -526,6 +544,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			if (gyroRunning && acceRunning) {
 				complementaty(event.timestamp);
 				toonPosition(mUserPos, new Double[]{mYaw, mPitch, mRoll}, mPhoenixPos, null);
+				textPosition(mUserPos, new Double[]{mYaw, mPitch, mRoll});
 			}
 		}
 		
@@ -870,6 +889,40 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			phoenix.setVisibility(View.VISIBLE);
 			phoenix.setX(centerPosX - params.width / 2);
 			phoenix.setY(centerPosY - params.height / 2);
+		}
+	}
+
+	void textPosition(int[] userPos, Double[] userDirt) {
+		if (userPos==null || userDirt==null) return;
+
+		int leftOrRight;
+		if (fixed_default_yaw - 180 < 0) {
+			if (fixed_default_yaw < userDirt[0] && userDirt[0] < fixed_default_yaw + 180) leftOrRight = 1;
+			else leftOrRight = 0;
+		} else {
+			if (fixed_default_yaw-180 < userDirt[0] && userDirt[0] < fixed_default_yaw) leftOrRight = 0;
+			else leftOrRight = 1;
+		}
+		room.setText(rooms[userPos[0]][leftOrRight]);
+
+		double fixedYaw;
+		if (leftOrRight == 0) {
+			fixedYaw = fixed_default_yaw - 90;
+			if (fixedYaw < 0) fixedYaw += 360;
+		} else {
+			fixedYaw = fixed_default_yaw + 90;
+			if (fixedYaw > 360) fixedYaw -= 360;
+		}
+
+		float centerPosX = (float) (DEFAULT_POS_X + (fixedYaw - userDirt[0]) * 25);
+		float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 32);
+
+		if (centerPosX < 0 || centerPosX > 1080 || centerPosY < 0 || centerPosY > 1920) {
+			room.setVisibility(View.INVISIBLE);
+		} else {
+			room.setVisibility(View.VISIBLE);
+			room.setX(centerPosX - 100);
+			room.setY(centerPosY - 50);
 		}
 	}
 	
