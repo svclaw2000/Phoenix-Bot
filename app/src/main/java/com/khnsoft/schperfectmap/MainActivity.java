@@ -117,6 +117,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	ImageView fab;
 	ImageView fab1;
 	ImageView fab2;
+	ImageView fab3;
 	Animation fab_open;
 	Animation fab_close;
 	Boolean isOpen;
@@ -128,12 +129,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	String strJson;
 	HttpAsyncTask httpTask;
 	
-	// realDecisionTree dTree = null;
-	// Vector<String> rawAttributes;
-	// Vector<Double> rawValues;
+	/*
+	realDecisionTree dTree = null;
+	Vector<String> rawAttributes;
+	Vector<Double> rawValues;
+	*/
+	
 	JsonObject wifiFingerprint;
 	TextView Tres;
-	boolean checking;
 	
 	ImageView phoenix;
 	int[] mUserPos = null;
@@ -142,7 +145,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	int mPosY = -1;
 	int mSizeX = -1;
 	int mSizeY = -1;
-	int fixed_default_yaw = -1;
+	Double fixed_default_yaw = -1.0;
 	final int DEFAULT_SIZE_X = 320;
 	final int DEFAULT_SIZE_Y = 400;
 	final int DEFAULT_POS_X = 540;
@@ -200,14 +203,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		fab = findViewById(R.id.fab);
 		fab1 = findViewById(R.id.fab1);
 		fab2 = findViewById(R.id.fab2);
+		fab3 = findViewById(R.id.fab3);
 		fab.setImageResource(R.drawable.setting);
 		fab1.setImageResource(R.drawable.setting);
 		fab2.setImageResource(R.drawable.record);
+		fab3.setImageResource(R.drawable.compass);
 		fab_open = AnimationUtils.loadAnimation(this, R.anim.fab_open);
 		fab_close = AnimationUtils.loadAnimation(this, R.anim.fab_close);
 		fab.setOnClickListener(this);
 		fab1.setOnClickListener(this);
 		fab2.setOnClickListener(this);
+		fab3.setOnClickListener(this);
 		init();
 		
 		String FILE_NAME = "Log.log";
@@ -274,7 +280,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 					e.printStackTrace();
 				}
 			}
-		} */
+		}
+		*/
 	}
 	
 	Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
@@ -494,7 +501,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			
 			if (mReady && gReady && SensorManager.getRotationMatrix(rMat, iMat, gData, mData)) {
 				accYaw = (Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]) + 360) % 360;
-				if (fixMode) {
+				if (fixMode && mRoll < MAX_ROLL && mRoll > MIN_ROLL && mPitch < MAX_PITCH && mPitch > MIN_PITCH) {
 					if (fixCount == 0) fixYaw = new double[MAX_FIX_COUNT];
 					if (fixCount < MAX_FIX_COUNT) {
 						fixYaw[fixCount] = accYaw;
@@ -505,14 +512,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 							sum += fixYaw[i];
 						}
 						mYaw = sum / (MAX_FIX_COUNT * 1.0);
+						fixed_default_yaw = DEFAULT_YAW[mUserPos[0]];
 						lastSyncTime = System.currentTimeMillis();
 						fixCount = 0;
+						Toast.makeText(MainActivity.this, "각도 재설정", Toast.LENGTH_SHORT).show();
 						fixMode = false;
 					}
-				} else if (System.currentTimeMillis() - lastSyncTime > UPDATE_TIME &&
-						mRoll < MAX_ROLL && mRoll > MIN_ROLL &&
-						mPitch < MAX_PITCH && mPitch > MIN_PITCH) {
-					fixMode = true;
 				}
 				mReady = false;
 				gReady = false;
@@ -569,7 +574,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				if (action.equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
 					getWIFIScanResult();
 					wm.startScan();
-					// Log.i("@@@", "Start Scan");
 				} else if (action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
 					context.sendBroadcast(new Intent("wifi.ON_NETWORK_STATE_CHANGED"));
 				}
@@ -591,6 +595,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			Log.i("@@@", "Target IP: " + ip);
 			httpTask.execute(ip, "locate");
 		}
+		
 		/* Decision Tree
 		rawAttributes = new Vector<String>();
 		rawValues = new Vector<Double>();
@@ -611,7 +616,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			}
 		}
 		*/
-		// Log.i("@@@", "ScanResult : " + scanResult.size());
 	}
 	
 	@Override
@@ -631,6 +635,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				Intent intent2 = new Intent(this, admin_interface.class);
 				startActivity(intent2);
 				break;
+			case R.id.fab3:
+				fixMode = true;
+				anim();
+				break;
 		}
 	}
 	
@@ -639,15 +647,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			fab.setImageResource(R.drawable.setting);
 			fab1.startAnimation(fab_close);
 			fab2.startAnimation(fab_close);
+			fab3.startAnimation(fab_close);
 			fab1.setClickable(false);
 			fab2.setClickable(false);
+			fab3.setClickable(false);
 			isOpen = false;
 		} else {
 			fab.setImageResource(R.drawable.cancel);
 			fab1.startAnimation(fab_open);
 			fab2.startAnimation(fab_open);
+			fab3.startAnimation(fab_open);
 			fab1.setClickable(true);
 			fab2.setClickable(true);
+			fab3.setClickable(true);
 			isOpen = true;
 		}
 	}
@@ -838,12 +850,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		params.height = Math.round(sizeY);
 		
 		// 위치에 의한 캐릭터 위치 조정
-		double fixedYaw = DEFAULT_YAW[userPos[0]] + Math.toDegrees(Math.atan2(toonPos[1] - userPos[1], userPos[0] - toonPos[0]));
+		double fixedYaw = fixed_default_yaw + Math.toDegrees(Math.atan2(toonPos[1] - userPos[1], userPos[0] - toonPos[0]));
 		while (fixedYaw < 0 || fixedYaw > 360) {
 			fixedYaw += 360;
 			fixedYaw %= 360;
 		}
-		Log.i("@@@", String.format("Default yaw: %s, Fixed yaw: %s", DEFAULT_YAW[userPos[0]], fixedYaw));
+		Log.i("@@@", String.format("Default yaw: %s, Fixed yaw: %s", fixed_default_yaw, fixedYaw));
 		
 		// 각도에 의한 캐릭터 위치 조정
 		float centerPosX = (float) (DEFAULT_POS_X + (fixedYaw - userDirt[0]) * 25);
