@@ -15,31 +15,27 @@
 		android:id="@+id/background"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		android:orientation="vertical"
-		android:weightSum="20">
-		
-		<Space
-			android:layout_width="match_parent"
-			android:layout_height="0dp"
-			android:layout_weight="18" />
+		android:orientation="vertical">
 		
 		<TextView
 			android:id="@+id/result"
-			android:layout_width="match_parent"
+			android:layout_width="200dp"
 			android:layout_height="0dp"
 			android:layout_weight="1"
 			android:background="@drawable/ap_layout_box_white"
 			android:gravity="center"
+			android:alpha="0.7"
 			android:text="Result"
 			android:visibility="invisible" />
 		
 		<LinearLayout
 			android:id="@+id/sensorValue"
-			android:layout_width="match_parent"
+			android:layout_width="200dp"
 			android:layout_height="0dp"
 			android:layout_weight="1"
 			android:background="#FFF"
 			android:orientation="horizontal"
+			android:alpha="0.7"
 			android:visibility="invisible"
 			android:weightSum="3">
 			
@@ -70,6 +66,38 @@
 				android:gravity="center"
 				android:text="0" />
 		</LinearLayout>
+		
+		<Space
+			android:layout_width="match_parent"
+			android:layout_height="0dp"
+			android:layout_weight="16" />
+	
+	<LinearLayout
+		android:id="@+id/dialog"
+		android:layout_width="match_parent"
+		android:layout_height="0dp"
+		android:layout_weight="2"
+		android:background="#FFF"
+		android:orientation="horizontal"
+		android:visibility="visible">
+		
+		
+		<EditText
+			android:id="@+id/dialogInput"
+			android:layout_width="0dp"
+			android:layout_height="match_parent"
+			android:layout_weight="4"
+			android:lines="2"
+			android:inputType="none"
+			android:text="" />
+		
+		<Button
+			android:id="@+id/dialogSend"
+			android:layout_width="0dp"
+			android:layout_height="match_parent"
+			android:layout_weight="1"
+			android:text="SEND" />
+	</LinearLayout>
 	</LinearLayout>
 	
 	<ImageView

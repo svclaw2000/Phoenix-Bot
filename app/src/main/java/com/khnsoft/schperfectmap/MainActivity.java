@@ -25,12 +25,15 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -101,11 +104,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	int fixCount = 0;
 	boolean fixMode = false;
 	final int MAX_FIX_COUNT = 3;
-	final int UPDATE_TIME = 300;
 	final int MIN_ROLL = 30;
 	final int MAX_ROLL = 50;
 	final int MIN_PITCH = -20;
 	final int MAX_PITCH = 20;
+	double tmpYaw, tmpPitch, tmpRoll;
+	ArrayList<Double> yawFilter;
+	ArrayList<Double> pitchFilter;
+	ArrayList<Double> rollFilter;
+	final int FILTER_SIZE = 7;
 	
 	float[] gData = new float[3];
 	float[] mData = new float[3];
@@ -141,31 +148,47 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	ImageView phoenix;
 	int[] mUserPos = null;
 	int[] mPhoenixPos = null;
-	Double fixed_default_yaw = -1.0;
-	final int DEFAULT_SIZE_X = 320;
-	final int DEFAULT_SIZE_Y = 400;
+	double fixed_default_yaw = -1.0;
+	double ex_fixed_yaw = -1.0;
+	final int PHOENIX_DEFAULT_SIZE_X = 320;
+	final int PHOENIX_DEFAULT_SIZE_Y = 400;
 	final int DEFAULT_POS_X = 540;
 	final int DEFAULT_POS_Y = 1200;
 	final Double[] DEFAULT_YAW = {237.0, 0.0, 0.0, 0.0, 190.57,    // 0-4
 			195.45, 216.96, 277.63, 251.24, 244.26,                // 5-9
 			263.04, 275.30, 233.52, 213.76, 210.58};            // 10-14
 	final Double DEFAULT_ROLL = 90.0;
-
+	
 	TextView room;
 	final String[][] rooms = {
-			{},{},{},{},
-			{"ML313", "Server Room"},		// 4
-			{"", ""},							// 5
-			{"ML313", ""},						// 6
-			{"Prof. Y.S.Jeong", "ML304"},	// 7
-			{"", ""},							// 8
-			{"Prof. J.H.Kim", ""},			// 9
-			{"Prof. J.Y.Woo", ""},			// 10
-			{"Prof. Y.M.Kim", "ML304"},		// 11
-			{"Prof. J.K.Jo", "R.A."},		// 12
-			{"", ""},							// 13
-			{"", "Conference Room"}			// 14
+			{}, {}, {}, {},
+			{"ML313", "Server Room"},        // 4
+			{"", ""},                            // 5
+			{"ML313", ""},                        // 6
+			{"Prof. Y.S.Jeong", "ML304"},    // 7
+			{"", ""},                            // 8
+			{"Prof. J.H.Kim", ""},            // 9
+			{"Prof. J.Y.Woo", ""},            // 10
+			{"Prof. Y.M.Kim", "ML304"},        // 11
+			{"Prof. J.K.Jo", "R.A."},        // 12
+			{"", ""},                            // 13
+			{"", "Conference Room"}            // 14
 	};
+	final int ROOM_DEFAULT_SIZE_X = 500;
+	final int ROOM_DEFAULT_SIZE_Y = 200;
+	
+	EditText dialogInput;
+	Button dialogSend;
+	boolean sendable = false;
+	float[] displayPos = null;
+	TextView dialogMsg;
+	final int DIALOG_DEFAULT_SIZE_X = 500;
+	final int DIALOG_DEFAULT_SIZE_Y = 200;
+	String resp = "";
+	boolean dialogVisible = false;
+	long dialogTime = 0;
+	final long DIALOG_SHOW_TIME = 3000;
+	String sendMsg;
 	
 	final HostnameVerifier DO_NOT_VERIFY = new HostnameVerifier() {
 		public boolean verify(String hostname, SSLSession session) {
@@ -259,15 +282,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		// Initialize Phoenix character
 		phoenix = new ImageView(this);
 		phoenix.setImageResource(R.drawable.phoenix);
-		phoenix.setLayoutParams(new ViewGroup.LayoutParams(DEFAULT_SIZE_X, DEFAULT_SIZE_Y));
+		phoenix.setLayoutParams(new ViewGroup.LayoutParams(PHOENIX_DEFAULT_SIZE_X, PHOENIX_DEFAULT_SIZE_Y));
 		phoenix.setVisibility(View.INVISIBLE);
 		((FrameLayout) findViewById(R.id.mainView)).addView(phoenix);
-
+		
 		room = new TextView(this);
-		room.setLayoutParams(new ViewGroup.LayoutParams(200, 100));
+		room.setLayoutParams(new ViewGroup.LayoutParams(ROOM_DEFAULT_SIZE_X, ROOM_DEFAULT_SIZE_Y));
 		room.setVisibility(View.INVISIBLE);
+		room.setTextSize(20);
+		room.setGravity(Gravity.CENTER);
+		room.setBackgroundResource(R.drawable.ap_layout_box_white);
 		((FrameLayout) findViewById(R.id.mainView)).addView(room);
-
+		
+		dialogInput = findViewById(R.id.dialogInput);
+		dialogSend = findViewById(R.id.dialogSend);
+		dialogSend.setOnClickListener(this);
+		dialogMsg = new TextView(this);
+		dialogMsg.setLayoutParams(new ViewGroup.LayoutParams(DIALOG_DEFAULT_SIZE_X, DIALOG_DEFAULT_SIZE_Y));
+		dialogMsg.setVisibility(View.INVISIBLE);
+		dialogMsg.setTextSize(20);
+		dialogMsg.setGravity(Gravity.CENTER);
+		dialogMsg.setBackgroundResource(R.drawable.ap_layout_box_white);
+		((FrameLayout) findViewById(R.id.mainView)).addView(dialogMsg);
+		
 		/* Decision Tree
 		FILE_NAME = "identifier.md";
 		file = new File(this.getFilesDir(), FILE_NAME);
@@ -484,15 +521,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 					} else {
 						dt2 = (event.timestamp - exts) * NS2S;
 						exts = event.timestamp;
+						if (yawFilter == null) yawFilter = new ArrayList<Double>();
 						if (mRoll >= 0 && mRoll < 90) {
-							mYaw = mYaw - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (mRoll / 90.0)) * dt2 * RAD2DGR;
+							tmpYaw = tmpYaw - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (mRoll / 90.0)) * dt2 * RAD2DGR;
 						} else if (mRoll >= 90 && mRoll < 180) {
-							mYaw = mYaw - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (2 - mRoll / 90.0)) * dt2 * RAD2DGR;
+							tmpYaw = tmpYaw - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (2 - mRoll / 90.0)) * dt2 * RAD2DGR;
 						}
-						while (mYaw < 0) {
-							mYaw += 360;
+						while (tmpYaw < 0) {
+							tmpYaw += 360;
 						}
-						mYaw = mYaw % 360;
+						tmpYaw = tmpYaw % 360;
+						
+						if (yawFilter.size() < FILTER_SIZE) {
+							yawFilter.add(tmpYaw);
+						} else {
+							yawFilter.remove(0);
+							yawFilter.add(tmpYaw);
+							double sum = 0;
+							for (double i : yawFilter) sum += i;
+							mYaw = sum / yawFilter.size();
+						}
 					}
 					break;
 				
@@ -526,10 +574,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						fixCount++;
 					} else {
 						double sum = 0;
-						for (int i = 0; i < MAX_FIX_COUNT; i++) {
-							sum += fixYaw[i];
-						}
-						mYaw = sum / (MAX_FIX_COUNT * 1.0);
+						for (double i : fixYaw) sum += i;
+						tmpYaw = sum / (MAX_FIX_COUNT * 1.0);
 						fixed_default_yaw = DEFAULT_YAW[mUserPos[0]];
 						lastSyncTime = System.currentTimeMillis();
 						fixCount = 0;
@@ -567,11 +613,32 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		mAccPitch = -Math.atan2(mAcceValues[0], mAcceValues[2]) * RAD2DGR;
 		mAccRoll = Math.atan2(mAcceValues[1], mAcceValues[2]) * RAD2DGR;
 		
-		temp = (1 / a) * (mAccPitch - mPitch) + mGyroValues[1];
-		mPitch = mPitch + (temp * dt);
+		temp = (1 / a) * (mAccPitch - tmpPitch) + mGyroValues[1];
+		tmpPitch = tmpPitch + (temp * dt);
 		
-		temp = (1 / a) * (mAccRoll - mRoll) + mGyroValues[0];
-		mRoll = mRoll + (temp * dt);
+		temp = (1 / a) * (mAccRoll - tmpRoll) + mGyroValues[0];
+		tmpRoll = tmpRoll + (temp * dt);
+		
+		if (pitchFilter == null) pitchFilter = new ArrayList<Double>();
+		if (rollFilter == null) rollFilter = new ArrayList<Double>();
+		
+		if (pitchFilter.size() < FILTER_SIZE) pitchFilter.add(tmpPitch);
+		else {
+			pitchFilter.remove(0);
+			pitchFilter.add(tmpPitch);
+			double sum = 0;
+			for (double i : pitchFilter) sum += i;
+			mPitch = sum / FILTER_SIZE;
+		}
+		
+		if (rollFilter.size() < FILTER_SIZE) rollFilter.add(tmpRoll);
+		else {
+			rollFilter.remove(0);
+			rollFilter.add(tmpRoll);
+			double sum = 0;
+			for (double i : rollFilter) sum += i;
+			mRoll = sum / FILTER_SIZE;
+		}
 	}
 	
 	Handler handler = new Handler(new Handler.Callback() {
@@ -643,20 +710,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			case R.id.fab:
 				anim();
 				break;
+			
 			case R.id.fab1:
 				anim();
 				Intent intent = new Intent(this, preferences.class);
 				//	Intent intent = new Intent(this, user_interface.class);
 				startActivity(intent);
 				break;
+			
 			case R.id.fab2:
 				anim();
 				Intent intent2 = new Intent(this, admin_interface.class);
 				startActivity(intent2);
 				break;
+			
 			case R.id.fab3:
 				fixMode = true;
 				anim();
+				break;
+			
+			case R.id.dialogSend:
+				if (sendable) {
+					sendMsg = dialogInput.getText().toString();
+					dialogInput.setText("");
+					httpTask = new HttpAsyncTask(MainActivity.this);
+					String ip = "https://114.71.220.20:8001/bytecelldialog";
+					Log.i("@@@", "Target IP: " + ip);
+					httpTask.execute(ip, "dialog");
+				} else
+					Toast.makeText(MainActivity.this, "캐릭터와 가까운 곳에서 캐릭터를 바라보고 전송해 주세요.", Toast.LENGTH_SHORT).show();
 				break;
 		}
 	}
@@ -685,6 +767,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	
 	class HttpAsyncTask extends AsyncTask<String, Void, String> {
 		MainActivity ui;
+		String mode;
 		
 		HttpAsyncTask(MainActivity main) {
 			this.ui = main;
@@ -692,7 +775,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		
 		@Override
 		protected String doInBackground(String... str) {
-			return POST(str[0], str[1]);
+			mode = str[1];
+			return POST(str[0], mode);
 		}
 		
 		@Override
@@ -705,24 +789,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				@Override
 				public void run() {
 					try {
-						if (strJson.isEmpty() || strJson.contains("ERROR") || strJson.contains("error")) {
-							Tres.setText("Error");
-							return;
-						}
-						
 						JsonParser parser = new JsonParser();
 						JsonObject json = (JsonObject) parser.parse(strJson);
 						
-						if (json.has("mr")) {
-							if (json.getAsJsonObject("mr").has("error") && json.getAsJsonObject("mr")
-									.get("error").toString().replaceAll("\"", "").contains("ERRORv-")) {
-								JsonObject versions = json.getAsJsonObject("mr").getAsJsonObject("versions");
-								int[] ver = checkVersions(versions);
-								Log.i("@@@", "version: " + ver[0] + ver[1] + ver[2]);
-								if (ver[1] == 1) {
-									if (savemap(json.getAsJsonObject("mr").getAsJsonObject("map").toString())) {
-										editor.putString("version_map", versions.get("version_map").toString().replaceAll("\"", ""));
-										editor.apply();
+						Log.i("@@@", mode);
+						
+						if (mode.equals("onCreate")) {
+							if (json.has("mr")) {
+								if (json.getAsJsonObject("mr").get("error").toString().replaceAll("\"", "").contains("ERRORv-")) {
+									JsonObject versions = json.getAsJsonObject("mr").getAsJsonObject("versions");
+									int[] ver = checkVersions(versions);
+									Log.i("@@@", "version: " + ver[0] + ver[1] + ver[2]);
+									if (ver[1] == 1) {
+										if (savemap(json.getAsJsonObject("mr").getAsJsonObject("map").toString())) {
+											editor.putString("version_map", versions.get("version_map").toString().replaceAll("\"", ""));
+											editor.apply();
+										}
 									}
 								}
 								/*if (ver[2] == 1) {
@@ -732,24 +814,32 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 									}
 								}*/
 							}
-							if (json.getAsJsonObject("mr").has("users")) {
-								JsonObject userLocation = (JsonObject) ((JsonObject) json.getAsJsonObject("mr").getAsJsonArray("users").get(0))
-										.getAsJsonArray("location").get(0);
-								Tres.setText(userLocation.get("map").toString() + userLocation.get("tile").toString());
-								String[] tile = userLocation.get("tile").toString().replace("\"", "").split("/");
-								mUserPos = new int[]{Integer.parseInt(tile[0]), Integer.parseInt(tile[1])};
-								String[] phoenixLocation = ((JsonObject) json.getAsJsonObject("mr").getAsJsonArray("systems").get(1))
-										.getAsJsonObject("location").get("tile").toString().replace("\"", "").split("/");
-								mPhoenixPos = new int[]{Integer.parseInt(phoenixLocation[0]), Integer.parseInt(phoenixLocation[1])};
+						} else if (mode.equals("locate")) {
+							if (strJson.isEmpty() || strJson.contains("ERROR") || strJson.contains("error")) {
+								Tres.setText("Error");
+								return;
 							}
-							//		if (json.getAsJsonObject("mr").has("setPos")) {
-							//			mPosX = Integer.parseInt(json.getAsJsonObject("mr").get("posX").toString());
-							//			mPosY = Integer.parseInt(json.getAsJsonObject("mr").get("posY").toString());
-							//		}
-							//		if (json.getAsJsonObject("mr").has("setSize")) {
-							//			mSizeX = Integer.parseInt(json.getAsJsonObject("mr").get("sizeX").toString());
-							//			mSizeY = Integer.parseInt(json.getAsJsonObject("mr").get("sizeY").toString());
-							//		}
+							if (json.has("mr")) {
+								if (json.getAsJsonObject("mr").has("users")) {
+									JsonObject userLocation = (JsonObject) ((JsonObject) json.getAsJsonObject("mr").getAsJsonArray("users").get(0))
+											.getAsJsonArray("location").get(0);
+									Tres.setText(userLocation.get("map").toString() + userLocation.get("tile").toString());
+									String[] tile = userLocation.get("tile").toString().replace("\"", "").split("/");
+									mUserPos = new int[]{Integer.parseInt(tile[0]), Integer.parseInt(tile[1])};
+									String[] phoenixLocation = ((JsonObject) json.getAsJsonObject("mr").getAsJsonArray("systems").get(1))
+											.getAsJsonObject("location").get("tile").toString().replace("\"", "").split("/");
+									mPhoenixPos = new int[]{Integer.parseInt(phoenixLocation[0]), Integer.parseInt(phoenixLocation[1])};
+								}
+							}
+						} else if (mode.equals("dialog")) {
+							if (json.has("resp")) {
+								resp = ((JsonObject) (json.getAsJsonObject("resp").getAsJsonObject("client_actions")
+										.getAsJsonArray("vision").get(0)))
+										.getAsJsonArray("object").get(0).toString();
+								Log.i("@@@", "Dialog: " + resp);
+								dialogTime = System.currentTimeMillis();
+								dialogHandler.sendEmptyMessage(0);
+							}
 						}
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -775,24 +865,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			int ipAddress = info.getIpAddress();
 			String myip = String.format("%d.%d.%d.%d", (ipAddress & 0xff), (ipAddress >> 8 & 0xff), (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff));
 			JsonObject jsonObject = new JsonObject();
-			jsonObject.addProperty("requestType", sp.getString("requestType", ""));
-			jsonObject.addProperty("userID", sp.getString("userID", ""));
-			jsonObject.addProperty("passwd", sp.getString("passwd", ""));
-			// jsonObject.accumulate("IP", myip);
-			jsonObject.addProperty("version_app", getPackageManager().getPackageInfo(getPackageName(), 0).versionName);
-			jsonObject.addProperty("version_map", sp.getString("version_map", ""));
-			jsonObject.addProperty("version_location_identifier", sp.getString("version_location_identifier", "0.1"));
-			
-			if (sp.getString("requestType", "").equals("mr_user")) {
-				if (mode.equals("locate")) jsonObject.add("user_location", wifiFingerprint);
-				JsonObject dir = new JsonObject();
-				dir.addProperty("yaw", (int) mYaw);
-				dir.addProperty("pitch", (int) mPitch);
-				dir.addProperty("roll", (int) mRoll);
-				jsonObject.add("user_direction", dir);
-				jsonObject.addProperty("user_action", "");
+			if (mode.equals("dialog")) {
+				jsonObject.addProperty("requestType", "dialog");
+				jsonObject.addProperty("userID", "admin");
+				jsonObject.addProperty("IP", myip);
+				jsonObject.addProperty("rawText", sendMsg);
+			} else {
+				jsonObject.addProperty("requestType", sp.getString("requestType", ""));
+				jsonObject.addProperty("userID", sp.getString("userID", ""));
+				jsonObject.addProperty("passwd", sp.getString("passwd", ""));
+				jsonObject.addProperty("IP", myip);
+				jsonObject.addProperty("version_app", getPackageManager().getPackageInfo(getPackageName(), 0).versionName);
+				jsonObject.addProperty("version_map", sp.getString("version_map", ""));
+				jsonObject.addProperty("version_location_identifier", sp.getString("version_location_identifier", "0.1"));
+				
+				if (sp.getString("requestType", "").equals("mr_user")) {
+					if (mode.equals("locate")) jsonObject.add("user_location", wifiFingerprint);
+					JsonObject dir = new JsonObject();
+					dir.addProperty("yaw", (int) mYaw);
+					dir.addProperty("pitch", (int) mPitch);
+					dir.addProperty("roll", (int) mRoll);
+					jsonObject.add("user_direction", dir);
+					jsonObject.addProperty("user_action", "");
+				}
 			}
-			
 			json = jsonObject.toString();
 			Log.i("@@@", "SEND: " + json);
 			AddLog.add(MainActivity.this, "SEND", json);
@@ -842,16 +938,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		
 		ViewGroup.LayoutParams params = phoenix.getLayoutParams();
 		
-		float sizeX = DEFAULT_SIZE_X;
-		float sizeY = DEFAULT_SIZE_Y;
+		float sizeX = PHOENIX_DEFAULT_SIZE_X;
+		float sizeY = PHOENIX_DEFAULT_SIZE_Y;
 		
 		//	if (mSizeX!=-1 && mSizeY!=-1) {
 		//		params.width = mSizeX;
 		//		params.height = mSizeY;
 		//	} else
-		double dist = Math.sqrt((userPos[0] - toonPos[0]) * (userPos[0] - toonPos[0]) + (userPos[1] - toonPos[1]) * (userPos[1] - toonPos[1])) - 3;
-		Log.i("@@@", String.format("dist: %s", dist));
-		Log.i("@@@", String.format("toon: [%d/%d], user: [%d/%d]", toonPos[0], toonPos[1], userPos[0], userPos[1]));
+		double firstDist = Math.sqrt((userPos[0] - toonPos[0]) * (userPos[0] - toonPos[0]) + (userPos[1] - toonPos[1]) * (userPos[1] - toonPos[1])) - 3;
+		double dist = firstDist;
+		// Log.i("@@@", String.format("dist: %s", dist));
+		// Log.i("@@@", String.format("toon: [%d/%d], user: [%d/%d]", toonPos[0], toonPos[1], userPos[0], userPos[1]));
 		if (dist > 0) {
 			while (dist > 0.1) {
 				sizeX *= 0.98;
@@ -870,41 +967,55 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		
 		// 위치에 의한 캐릭터 위치 조정
 		double fixedYaw = fixed_default_yaw + Math.toDegrees(Math.atan2(toonPos[1] - userPos[1], userPos[0] - toonPos[0]));
+		if (toonPos[0]==userPos[0] && toonPos[1]==userPos[1]) fixedYaw = ex_fixed_yaw;
+		ex_fixed_yaw = fixedYaw;
 		while (fixedYaw < 0 || fixedYaw > 360) {
 			fixedYaw += 360;
 			fixedYaw %= 360;
 		}
-		Log.i("@@@", String.format("Default yaw: %s, Fixed yaw: %s", fixed_default_yaw, fixedYaw));
+		// Log.i("@@@", String.format("Default yaw: %s, Fixed yaw: %s", fixed_default_yaw, fixedYaw));
 		
 		// 각도에 의한 캐릭터 위치 조정
 		float centerPosX = (float) (DEFAULT_POS_X + (fixedYaw - userDirt[0]) * 25);
 		float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 32);
 		
-		Log.i("@@@", String.format("X: %s, Y: %s", centerPosX, centerPosY));
+		// Log.i("@@@", String.format("X: %s, Y: %s", centerPosX, centerPosY));
 		
 		phoenix.setLayoutParams(params);
+		sendable = false;
 		if (centerPosX < 0 || centerPosX > 1080 || centerPosY < 0 || centerPosY > 1920) {
 			phoenix.setVisibility(View.INVISIBLE);
+			displayPos = null;
 		} else {
+			if (firstDist <= 3) sendable = true;
 			phoenix.setVisibility(View.VISIBLE);
+			displayPos = new float[]{centerPosX, centerPosY - params.height / 2};
+			showDialog(resp, dialogVisible);
 			phoenix.setX(centerPosX - params.width / 2);
 			phoenix.setY(centerPosY - params.height / 2);
 		}
 	}
-
+	
 	void textPosition(int[] userPos, Double[] userDirt) {
-		if (userPos==null || userDirt==null) return;
-
+		if (userPos == null || userDirt == null) return;
+		
 		int leftOrRight;
 		if (fixed_default_yaw - 180 < 0) {
-			if (fixed_default_yaw < userDirt[0] && userDirt[0] < fixed_default_yaw + 180) leftOrRight = 1;
+			if (fixed_default_yaw < userDirt[0] && userDirt[0] < fixed_default_yaw + 180)
+				leftOrRight = 1;
 			else leftOrRight = 0;
 		} else {
-			if (fixed_default_yaw-180 < userDirt[0] && userDirt[0] < fixed_default_yaw) leftOrRight = 0;
+			if (fixed_default_yaw - 180 < userDirt[0] && userDirt[0] < fixed_default_yaw)
+				leftOrRight = 0;
 			else leftOrRight = 1;
 		}
-		room.setText(rooms[userPos[0]][leftOrRight]);
-
+		if (rooms[userPos[0]][leftOrRight].isEmpty()) {
+			room.setVisibility(View.INVISIBLE);
+		} else {
+			room.setText(rooms[userPos[0]][leftOrRight]);
+			room.setVisibility(View.VISIBLE);
+		}
+		
 		double fixedYaw;
 		if (leftOrRight == 0) {
 			fixedYaw = fixed_default_yaw - 90;
@@ -913,18 +1024,47 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			fixedYaw = fixed_default_yaw + 90;
 			if (fixedYaw > 360) fixedYaw -= 360;
 		}
-
+		
 		float centerPosX = (float) (DEFAULT_POS_X + (fixedYaw - userDirt[0]) * 25);
 		float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 32);
-
+		
 		if (centerPosX < 0 || centerPosX > 1080 || centerPosY < 0 || centerPosY > 1920) {
 			room.setVisibility(View.INVISIBLE);
 		} else {
-			room.setVisibility(View.VISIBLE);
-			room.setX(centerPosX - 100);
-			room.setY(centerPosY - 50);
+			room.setX(centerPosX - ROOM_DEFAULT_SIZE_X / 2);
+			room.setY(centerPosY - ROOM_DEFAULT_SIZE_Y / 2);
 		}
 	}
+	
+	void showDialog(String msg, boolean visible) {
+		if (displayPos == null) return;
+		
+		float centerPosX = displayPos[0];
+		float centerPosY = displayPos[1];
+		
+		dialogMsg.setText(msg);
+		
+		if (visible) dialogMsg.setVisibility(View.VISIBLE);
+		else dialogMsg.setVisibility(View.INVISIBLE);
+		dialogMsg.setX(centerPosX - DIALOG_DEFAULT_SIZE_X / 2);
+		dialogMsg.setY(centerPosY - DIALOG_DEFAULT_SIZE_Y);
+	}
+	
+	Handler dialogHandler = new Handler(new Handler.Callback() {
+		@Override
+		public boolean handleMessage(Message message) {
+			if (dialogTime == 0) return false;
+			if (System.currentTimeMillis() - dialogTime < DIALOG_SHOW_TIME) {
+				dialogVisible = true;
+				dialogHandler.sendEmptyMessage(0);
+			} else {
+				dialogVisible = false;
+				dialogMsg.setVisibility(View.INVISIBLE);
+				dialogHandler.removeMessages(0);
+			}
+			return false;
+		}
+	});
 	
 	boolean chkInfo() {
 		if (sp.getString("requestType", "").isEmpty() || sp.getString("ip", "").isEmpty() ||
