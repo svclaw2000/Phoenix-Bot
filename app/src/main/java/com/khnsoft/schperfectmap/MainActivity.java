@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.hardware.Camera;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -56,6 +58,7 @@ import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -81,6 +84,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	Sensor mAcceSensor;
 	Sensor mMagnSensor;
 	Sensor mGravSensor;
+	Sensor mStepSensor;
 	
 	double mYaw, mPitch, mRoll;
 	double mAccPitch, mAccRoll;
@@ -132,6 +136,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	WifiManager wm;
 	List<ScanResult> scanResult;
 	String[] permissions = new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.CAMERA};
+	boolean wifiScanning = false;
 	
 	String strJson;
 	HttpAsyncTask httpTask;
@@ -153,7 +158,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	final int PHOENIX_DEFAULT_SIZE_X = 320;
 	final int PHOENIX_DEFAULT_SIZE_Y = 400;
 	final int DEFAULT_POS_X = 540;
-	final int DEFAULT_POS_Y = 1200;
+	final int DEFAULT_POS_Y = 960;
 	final Double[] DEFAULT_YAW = {237.0, 0.0, 0.0, 0.0, 190.57,    // 0-4
 			195.45, 216.96, 277.63, 251.24, 244.26,                // 5-9
 			263.04, 275.30, 233.52, 213.76, 210.58};            // 10-14
@@ -182,13 +187,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	boolean sendable = false;
 	float[] displayPos = null;
 	TextView dialogMsg;
-	final int DIALOG_DEFAULT_SIZE_X = 500;
-	final int DIALOG_DEFAULT_SIZE_Y = 200;
+	final int DIALOG_DEFAULT_SIZE_X = 700;
+	final int DIALOG_DEFAULT_SIZE_Y = 400;
 	String resp = "";
 	boolean dialogVisible = false;
 	long dialogTime = 0;
 	final long DIALOG_SHOW_TIME = 3000;
 	String sendMsg;
+	
+	long lastWalkedTime = 0;
+	final long CHK_WALK = 1000;
+	boolean isWalking = false;
 	
 	final HostnameVerifier DO_NOT_VERIFY = new HostnameVerifier() {
 		public boolean verify(String hostname, SSLSession session) {
@@ -203,15 +212,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		
 		preview = findViewById(R.id.preview_camera);
 		background = findViewById(R.id.background);
-		background.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				try {
-					camera.autoFocus(autoFocusCallback);
-				} catch (Exception e) {
-				}
-			}
-		});
+		background.setOnClickListener(this);
 		
 		sm = (SensorManager) getSystemService(SENSOR_SERVICE);
 		yaw = findViewById(R.id.yaw);
@@ -221,6 +222,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		mAcceSensor = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 		mMagnSensor = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 		mGravSensor = sm.getDefaultSensor(Sensor.TYPE_GRAVITY);
+		mStepSensor = sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
 		
 		Tres = findViewById(R.id.result);
 		
@@ -266,6 +268,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		
 		wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
 		wm.startScan();
+		wifiScanning = true;
 		// Log.i("@@@", "Start Scan");
 		
 		if (!checkPermissions()) {
@@ -371,8 +374,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		public void surfaceCreated(SurfaceHolder holder) {
 			try {
 				if (camera == null) {
-					camera = Camera.open();
-					camera.setDisplayOrientation(90);
 					camera.setPreviewDisplay(holder);
 					camera.startPreview();
 				}
@@ -382,7 +383,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		
 		@Override
 		public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-			if (cameraHolder == null) return;
+			if (cameraHolder.getSurface() == null) return;
 			
 			try {
 				camera.stopPreview();
@@ -441,9 +442,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		sm.registerListener(sensorlistener, mAcceSensor, SensorManager.SENSOR_DELAY_UI);
 		sm.registerListener(sensorlistener, mMagnSensor, SensorManager.SENSOR_DELAY_UI);
 		sm.registerListener(sensorlistener, mGravSensor, SensorManager.SENSOR_DELAY_UI);
+		sm.registerListener(sensorlistener, mStepSensor, SensorManager.SENSOR_DELAY_UI);
 		handler.sendEmptyMessage(0);
-		
-		wm.startScan();
 		
 		if (camera != null) {
 			camera.stopPreview();
@@ -532,14 +532,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						}
 						tmpYaw = tmpYaw % 360;
 						
-						if (yawFilter.size() < FILTER_SIZE) {
-							yawFilter.add(tmpYaw);
-						} else {
-							yawFilter.remove(0);
-							yawFilter.add(tmpYaw);
-							double sum = 0;
-							for (double i : yawFilter) sum += i;
-							mYaw = sum / yawFilter.size();
+						if (!fixMode) {
+							if (yawFilter.size() < FILTER_SIZE - 1) yawFilter.add(tmpYaw);
+							else if (yawFilter.size() == FILTER_SIZE - 1) {
+								yawFilter.add(tmpYaw);
+								double sinsum = 0;
+								double cossum = 0;
+								for (double i : yawFilter) {
+									sinsum += Math.sin(Math.toRadians(i));
+									cossum += Math.cos(Math.toRadians(i));
+								}
+								mYaw = Math.toDegrees(Math.atan2(sinsum, cossum)) % 360;
+							} else {
+								yawFilter.add(tmpYaw);
+								if (Math.abs(yawFilter.get(0) - mYaw) > 180 || Math.abs(tmpYaw - mYaw) > 180) {
+									double tYaw, lYaw, nYaw;
+									tYaw = (mYaw < 180) ? mYaw + 360 : mYaw;
+									lYaw = (yawFilter.get(0) < 180) ? yawFilter.get(0) + 360 : yawFilter.get(0);
+									nYaw = (tmpYaw < 180) ? tmpYaw + 360 : tmpYaw;
+									mYaw = (tYaw + (nYaw - lYaw) / FILTER_SIZE) % 360;
+								} else
+									mYaw = (mYaw + (tmpYaw - yawFilter.get(0)) / FILTER_SIZE) % 360;
+								yawFilter.remove(0);
+							}
 						}
 					}
 					break;
@@ -561,28 +576,65 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 					gReady = true;
 					break;
 				
+				case Sensor.TYPE_STEP_DETECTOR:
+					if (event.values[0] == 1.0) {
+						lastWalkedTime = System.currentTimeMillis();
+						isWalking = true;
+						if (!wifiScanning) {
+							wm.startScan();
+							wifiScanning = true;
+						}
+						GradientDrawable drawable = (GradientDrawable) Tres.getBackground();
+						drawable.setColor(Color.YELLOW);
+					}
+					break;
+				
 				default:
 					return;
 			}
 			
+			if (System.currentTimeMillis() - lastWalkedTime > CHK_WALK) {
+				isWalking = false;
+				GradientDrawable drawable = (GradientDrawable) Tres.getBackground();
+				drawable.setColor(Color.WHITE);
+			}
+			
 			if (mReady && gReady && SensorManager.getRotationMatrix(rMat, iMat, gData, mData)) {
 				accYaw = (Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]) + 360) % 360;
+					/*
 				if (fixMode && mRoll < MAX_ROLL && mRoll > MIN_ROLL && mPitch < MAX_PITCH && mPitch > MIN_PITCH) {
 					if (fixCount == 0) fixYaw = new double[MAX_FIX_COUNT];
 					if (fixCount < MAX_FIX_COUNT) {
 						fixYaw[fixCount] = accYaw;
 						fixCount++;
 					} else {
-						double sum = 0;
-						for (double i : fixYaw) sum += i;
-						tmpYaw = sum / (MAX_FIX_COUNT * 1.0);
+						double sinsum = 0;
+						double cossum = 0;
+						for (double i : fixYaw) {
+							sinsum += Math.sin(Math.toRadians(i));
+							cossum += Math.cos(Math.toRadians(i));
+						}
+						tmpYaw = Math.toDegrees(Math.atan2(sinsum, cossum)) % 360;
 						fixed_default_yaw = DEFAULT_YAW[mUserPos[0]];
 						lastSyncTime = System.currentTimeMillis();
 						fixCount = 0;
+						yawFilter = new ArrayList<Double>();
 						Toast.makeText(MainActivity.this, "각도 재설정", Toast.LENGTH_SHORT).show();
 						fixMode = false;
 					}
 				}
+				//	*/
+				
+				//	/*
+				if (fixMode) {
+					tmpYaw = 180;
+					fixed_default_yaw = 0;
+					yawFilter = new ArrayList<Double>();
+					fixMode = false;
+					Toast.makeText(MainActivity.this, "각도 재설정", Toast.LENGTH_SHORT).show();
+				}
+				//	*/
+				
 				mReady = false;
 				gReady = false;
 			}
@@ -622,22 +674,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		if (pitchFilter == null) pitchFilter = new ArrayList<Double>();
 		if (rollFilter == null) rollFilter = new ArrayList<Double>();
 		
-		if (pitchFilter.size() < FILTER_SIZE) pitchFilter.add(tmpPitch);
-		else {
-			pitchFilter.remove(0);
+		if (pitchFilter.size() < FILTER_SIZE - 1) pitchFilter.add(tmpPitch);
+		else if (pitchFilter.size() == FILTER_SIZE - 1) {
 			pitchFilter.add(tmpPitch);
 			double sum = 0;
 			for (double i : pitchFilter) sum += i;
-			mPitch = sum / FILTER_SIZE;
+			mPitch = sum / pitchFilter.size();
+		} else {
+			pitchFilter.add(tmpPitch);
+			mPitch = mPitch + (pitchFilter.get(pitchFilter.size() - 1) - pitchFilter.get(0)) / FILTER_SIZE;
+			pitchFilter.remove(0);
 		}
 		
-		if (rollFilter.size() < FILTER_SIZE) rollFilter.add(tmpRoll);
-		else {
-			rollFilter.remove(0);
+		if (rollFilter.size() < FILTER_SIZE - 1) rollFilter.add(tmpRoll);
+		else if (rollFilter.size() == FILTER_SIZE - 1) {
 			rollFilter.add(tmpRoll);
 			double sum = 0;
 			for (double i : rollFilter) sum += i;
-			mRoll = sum / FILTER_SIZE;
+			mRoll = sum / rollFilter.size();
+		} else {
+			rollFilter.add(tmpRoll);
+			mRoll = mRoll + (rollFilter.get(rollFilter.size() - 1) - rollFilter.get(0)) / FILTER_SIZE;
+			rollFilter.remove(0);
 		}
 	}
 	
@@ -659,7 +717,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			if (action != null) {
 				if (action.equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
 					getWIFIScanResult();
-					wm.startScan();
+					if (isWalking) wm.startScan();
+					else wifiScanning = false;
 				} else if (action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
 					context.sendBroadcast(new Intent("wifi.ON_NETWORK_STATE_CHANGED"));
 				}
@@ -707,6 +766,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
+			case R.id.background:
+				try {
+					camera.autoFocus(autoFocusCallback);
+				} catch (Exception e) {
+				}
+				break;
+			
 			case R.id.fab:
 				anim();
 				break;
@@ -967,7 +1033,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		
 		// 위치에 의한 캐릭터 위치 조정
 		double fixedYaw = fixed_default_yaw + Math.toDegrees(Math.atan2(toonPos[1] - userPos[1], userPos[0] - toonPos[0]));
-		if (toonPos[0]==userPos[0] && toonPos[1]==userPos[1]) fixedYaw = ex_fixed_yaw;
+		if (toonPos[0] == userPos[0] && toonPos[1] == userPos[1]) fixedYaw = ex_fixed_yaw;
 		ex_fixed_yaw = fixedYaw;
 		while (fixedYaw < 0 || fixedYaw > 360) {
 			fixedYaw += 360;
@@ -978,6 +1044,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		// 각도에 의한 캐릭터 위치 조정
 		float centerPosX = (float) (DEFAULT_POS_X + (fixedYaw - userDirt[0]) * 25);
 		float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 32);
+		
+		if (9 < userPos[0] && userPos[0] < 14) {
+			centerPosY += (userPos[0] - 9) * 160;
+		}
 		
 		// Log.i("@@@", String.format("X: %s, Y: %s", centerPosX, centerPosY));
 		
