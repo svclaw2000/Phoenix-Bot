@@ -28,6 +28,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -39,6 +40,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -58,6 +60,7 @@ import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -84,7 +87,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	Sensor mAcceSensor;
 	Sensor mMagnSensor;
 	Sensor mGravSensor;
-	Sensor mStepSensor;
 	
 	double mYaw, mPitch, mRoll;
 	double mAccPitch, mAccRoll;
@@ -158,26 +160,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	final int PHOENIX_DEFAULT_SIZE_X = 320;
 	final int PHOENIX_DEFAULT_SIZE_Y = 400;
 	final int DEFAULT_POS_X = 540;
-	final int DEFAULT_POS_Y = 960;
-	final Double[] DEFAULT_YAW = {237.0, 0.0, 0.0, 0.0, 190.57,    // 0-4
-			195.45, 216.96, 277.63, 251.24, 244.26,                // 5-9
-			263.04, 275.30, 233.52, 213.76, 210.58};            // 10-14
+	final int DEFAULT_POS_Y = 1100;
+	final Double[] DEFAULT_YAW = {237.0, 0.0, 0.0, 0.0, 190.57,        // 0-4
+			195.45, 216.96, 277.63, 251.24, 244.26,                    // 5-9
+			263.04, 275.30, 233.52, 213.76, 210.58};                   // 10-14
 	final Double DEFAULT_ROLL = 90.0;
 	
 	TextView room;
 	final String[][] rooms = {
 			{}, {}, {}, {},
-			{"ML313", "Server Room"},        // 4
+			{"ML313", "Server Room"},            // 4
 			{"", ""},                            // 5
-			{"ML313", ""},                        // 6
-			{"Prof. Y.S.Jeong", "ML304"},    // 7
+			{"ML313", ""},                       // 6
+			{"Prof. Y.S.Jeong", "ML304"},        // 7
 			{"", ""},                            // 8
-			{"Prof. J.H.Kim", ""},            // 9
-			{"Prof. J.Y.Woo", ""},            // 10
-			{"Prof. Y.M.Kim", "ML304"},        // 11
-			{"Prof. J.K.Jo", "R.A."},        // 12
+			{"Prof. J.H.Kim", ""},               // 9
+			{"Prof. J.Y.Woo", ""},               // 10
+			{"Prof. Y.M.Kim", "ML304"},          // 11
+			{"Prof. C.K.Cho", "R.A."},            // 12
 			{"", ""},                            // 13
-			{"", "Conference Room"}            // 14
+			{"", "Conference Room"}              // 14
 	};
 	final int ROOM_DEFAULT_SIZE_X = 500;
 	final int ROOM_DEFAULT_SIZE_Y = 200;
@@ -195,8 +197,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	final long DIALOG_SHOW_TIME = 3000;
 	String sendMsg;
 	
-	long lastWalkedTime = 0;
-	final long CHK_WALK = 1000;
+	final long WALKING_CHK_DURING_TIME = 500;
+	final float WALKING_WIDTH_MIN = 3;
+	final float WALKING_WIDTH_MAX = 5;
+	long lastChkWalking = 0;
+	ArrayList<Float> chkWalkSet;
 	boolean isWalking = false;
 	
 	final HostnameVerifier DO_NOT_VERIFY = new HostnameVerifier() {
@@ -213,6 +218,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		preview = findViewById(R.id.preview_camera);
 		background = findViewById(R.id.background);
 		background.setOnClickListener(this);
+		/*
+		background.setOnTouchListener(new View.OnTouchListener() {
+			@Override
+			public boolean onTouch(View view, MotionEvent motionEvent) {
+				GradientDrawable drawable = (GradientDrawable) Tres.getBackground();
+				switch (motionEvent.getAction()) {
+					case MotionEvent.ACTION_DOWN:
+					case MotionEvent.ACTION_MOVE:
+						isWalking = true;
+						if (!wifiScanning) {
+							wm.startScan();
+							wifiScanning = true;
+						}
+						drawable.setColor(Color.YELLOW);
+						break;
+						
+					case MotionEvent.ACTION_UP:
+						isWalking = false;
+						drawable.setColor(Color.WHITE);
+						break;
+				}
+				return false;
+			}
+		});
+		//*/
 		
 		sm = (SensorManager) getSystemService(SENSOR_SERVICE);
 		yaw = findViewById(R.id.yaw);
@@ -222,7 +252,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		mAcceSensor = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 		mMagnSensor = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 		mGravSensor = sm.getDefaultSensor(Sensor.TYPE_GRAVITY);
-		mStepSensor = sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
 		
 		Tres = findViewById(R.id.result);
 		
@@ -284,6 +313,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		
 		// Initialize Phoenix character
 		phoenix = new ImageView(this);
+		phoenix.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View view) {
+				if (!sendable) return;
+				resp = "OUCH!";
+				dialogTime = System.currentTimeMillis();
+				dialogHandler.sendEmptyMessage(0);
+			}
+		});
 		phoenix.setImageResource(R.drawable.phoenix);
 		phoenix.setLayoutParams(new ViewGroup.LayoutParams(PHOENIX_DEFAULT_SIZE_X, PHOENIX_DEFAULT_SIZE_Y));
 		phoenix.setVisibility(View.INVISIBLE);
@@ -442,7 +480,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		sm.registerListener(sensorlistener, mAcceSensor, SensorManager.SENSOR_DELAY_UI);
 		sm.registerListener(sensorlistener, mMagnSensor, SensorManager.SENSOR_DELAY_UI);
 		sm.registerListener(sensorlistener, mGravSensor, SensorManager.SENSOR_DELAY_UI);
-		sm.registerListener(sensorlistener, mStepSensor, SensorManager.SENSOR_DELAY_UI);
 		handler.sendEmptyMessage(0);
 		
 		if (camera != null) {
@@ -523,9 +560,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						exts = event.timestamp;
 						if (yawFilter == null) yawFilter = new ArrayList<Double>();
 						if (mRoll >= 0 && mRoll < 90) {
-							tmpYaw = tmpYaw - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (mRoll / 90.0)) * dt2 * RAD2DGR;
+							tmpYaw = tmpYaw + 0.02 - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (mRoll / 90.0)) * dt2 * RAD2DGR;
 						} else if (mRoll >= 90 && mRoll < 180) {
-							tmpYaw = tmpYaw - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (2 - mRoll / 90.0)) * dt2 * RAD2DGR;
+							tmpYaw = tmpYaw + 0.02 - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (2 - mRoll / 90.0)) * dt2 * RAD2DGR;
 						}
 						while (tmpYaw < 0) {
 							tmpYaw += 360;
@@ -564,6 +601,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 					if (!acceRunning) {
 						acceRunning = true;
 					}
+					
+					if (chkWalkSet == null) {
+						chkWalkSet = new ArrayList<Float>();
+					}
+					if (System.currentTimeMillis() - lastChkWalking > WALKING_CHK_DURING_TIME) {
+						if (chkWalkSet.isEmpty()) {
+							lastChkWalking = System.currentTimeMillis();
+							break;
+						}
+						float diff = Collections.max(chkWalkSet) - Collections.min(chkWalkSet);
+						isWalking = (WALKING_WIDTH_MIN < diff);
+						GradientDrawable drawable = (GradientDrawable) Tres.getBackground();
+						if (isWalking) {
+							drawable.setColor(Color.YELLOW);
+							if (!wifiScanning) {
+								wm.startScan();
+								wifiScanning = true;
+							}
+						}
+						else
+							drawable.setColor(Color.WHITE);
+						
+						chkWalkSet = new ArrayList<Float>();
+						lastChkWalking = System.currentTimeMillis();
+					} else chkWalkSet.add(mAcceValues[1]);
 					break;
 				
 				case Sensor.TYPE_MAGNETIC_FIELD:
@@ -576,32 +638,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 					gReady = true;
 					break;
 				
-				case Sensor.TYPE_STEP_DETECTOR:
-					if (event.values[0] == 1.0) {
-						lastWalkedTime = System.currentTimeMillis();
-						isWalking = true;
-						if (!wifiScanning) {
-							wm.startScan();
-							wifiScanning = true;
-						}
-						GradientDrawable drawable = (GradientDrawable) Tres.getBackground();
-						drawable.setColor(Color.YELLOW);
-					}
-					break;
-				
 				default:
 					return;
 			}
 			
-			if (System.currentTimeMillis() - lastWalkedTime > CHK_WALK) {
-				isWalking = false;
-				GradientDrawable drawable = (GradientDrawable) Tres.getBackground();
-				drawable.setColor(Color.WHITE);
-			}
-			
 			if (mReady && gReady && SensorManager.getRotationMatrix(rMat, iMat, gData, mData)) {
 				accYaw = (Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]) + 360) % 360;
-					/*
+				//*
 				if (fixMode && mRoll < MAX_ROLL && mRoll > MIN_ROLL && mPitch < MAX_PITCH && mPitch > MIN_PITCH) {
 					if (fixCount == 0) fixYaw = new double[MAX_FIX_COUNT];
 					if (fixCount < MAX_FIX_COUNT) {
@@ -625,7 +668,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				}
 				//	*/
 				
-				//	/*
+				/*
 				if (fixMode) {
 					tmpYaw = 180;
 					fixed_default_yaw = 0;
@@ -1044,10 +1087,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		// 각도에 의한 캐릭터 위치 조정
 		float centerPosX = (float) (DEFAULT_POS_X + (fixedYaw - userDirt[0]) * 25);
 		float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 32);
-		
-		if (9 < userPos[0] && userPos[0] < 14) {
-			centerPosY += (userPos[0] - 9) * 160;
-		}
 		
 		// Log.i("@@@", String.format("X: %s, Y: %s", centerPosX, centerPosY));
 		
