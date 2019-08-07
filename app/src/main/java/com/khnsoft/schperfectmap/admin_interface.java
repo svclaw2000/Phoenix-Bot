@@ -277,8 +277,13 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
         @Override
         protected String doInBackground(String... str) {
             sending = true;
-            status.setBackgroundColor(Color.YELLOW);
-            status.setText("Sending");
+            ai.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    status.setBackgroundColor(Color.YELLOW);
+                    status.setText("Sending");
+                }
+            });
             return POST(str[0], str[1]);
         }
 
@@ -415,11 +420,11 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                 JsonParser parser = new JsonParser();
                 JsonObject sendMap = (JsonObject) parser.parse(getmap());
                 JsonObject maps = sendMap.getAsJsonObject("maps");
-                JsonObject ML_3floor_bigdata = maps.getAsJsonObject("ML_3floor_bigdata");
-                ML_3floor_bigdata.remove("tile");
-                ML_3floor_bigdata.add("tile", map);
-                maps.remove("ML_3floor_bigdata");
-                maps.add("ML_3floor_bigdata", ML_3floor_bigdata);
+                JsonObject ML_3floor_305 = maps.getAsJsonObject("ML_3floor_305");
+                ML_3floor_305.remove("tile");
+                ML_3floor_305.add("tile", map);
+                maps.remove("ML_3floor_305");
+                maps.add("ML_3floor_305", ML_3floor_305);
                 sendMap.remove("maps");
                 sendMap.add("maps", maps);
                 jsonObject.add("map", sendMap);
@@ -599,7 +604,7 @@ public class admin_interface extends AppCompatActivity implements View.OnClickLi
                 AddLog.add(this, "DB", "Create DB " + name);
 
                 JsonObject tiles = map.getAsJsonObject("maps")
-                        .getAsJsonObject("ML_3floor_bigdata")
+                        .getAsJsonObject("ML_3floor_305")
                         .getAsJsonObject("tile");
                 Object[] keys = tiles.keySet().toArray();
 

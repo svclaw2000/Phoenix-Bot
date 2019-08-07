@@ -9,6 +9,8 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.Animatable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.hardware.Camera;
 import android.hardware.Sensor;
@@ -28,7 +30,6 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -40,10 +41,16 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.drawable.GlideDrawable;
+import com.bumptech.glide.load.resource.gif.GifDrawable;
+import com.bumptech.glide.request.animation.GlideAnimation;
+import com.bumptech.glide.request.target.GlideDrawableImageViewTarget;
+import com.bumptech.glide.request.target.ImageViewTarget;
+import com.bumptech.glide.request.target.Target;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -60,9 +67,7 @@ import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 import javax.net.ssl.HostnameVerifier;
@@ -168,7 +173,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	
 	TextView room;
 	final String[][] rooms = {
-			{}, {}, {}, {},
+			{"", ""}, {"", ""}, {"", ""}, {"", ""},
 			{"ML313", "Server Room"},            // 4
 			{"", ""},                            // 5
 			{"ML313", ""},                       // 6
@@ -202,13 +207,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	final float WALKING_WIDTH_MAX = 5;
 	long lastChkWalking = 0;
 	ArrayList<Float> chkWalkSet;
-	boolean isWalking = false;
+	boolean isWalking = true;
 	
 	final HostnameVerifier DO_NOT_VERIFY = new HostnameVerifier() {
 		public boolean verify(String hostname, SSLSession session) {
 			return true;
 		}
 	};
+	
+	ImageViewTarget ivTarget = null;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -320,9 +327,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				resp = "OUCH!";
 				dialogTime = System.currentTimeMillis();
 				dialogHandler.sendEmptyMessage(0);
+				// Glide.with(MainActivity.this).load(R.raw.stickman2).into(ivTarget);
 			}
 		});
-		phoenix.setImageResource(R.drawable.phoenix);
+		// phoenix.setImageResource(R.drawable.phoenix);
+		ivTarget = new GlideDrawableImageViewTarget(phoenix, 1);
+		phoenix.setImageResource(R.drawable.stickman2);
+		
 		phoenix.setLayoutParams(new ViewGroup.LayoutParams(PHOENIX_DEFAULT_SIZE_X, PHOENIX_DEFAULT_SIZE_Y));
 		phoenix.setVisibility(View.INVISIBLE);
 		((FrameLayout) findViewById(R.id.mainView)).addView(phoenix);
@@ -560,9 +571,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						exts = event.timestamp;
 						if (yawFilter == null) yawFilter = new ArrayList<Double>();
 						if (mRoll >= 0 && mRoll < 90) {
-							tmpYaw = tmpYaw + 0.02 - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (mRoll / 90.0)) * dt2 * RAD2DGR;
+							tmpYaw = tmpYaw - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (mRoll / 90.0)) * dt2 * RAD2DGR;
 						} else if (mRoll >= 90 && mRoll < 180) {
-							tmpYaw = tmpYaw + 0.02 - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (2 - mRoll / 90.0)) * dt2 * RAD2DGR;
+							tmpYaw = tmpYaw - (mGyroValues[2] * (1 - mRoll / 90.0) + mGyroValues[1] * (2 - mRoll / 90.0)) * dt2 * RAD2DGR;
 						}
 						while (tmpYaw < 0) {
 							tmpYaw += 360;
@@ -612,6 +623,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						}
 						float diff = Collections.max(chkWalkSet) - Collections.min(chkWalkSet);
 						isWalking = (WALKING_WIDTH_MIN < diff);
+						isWalking = true;
 						GradientDrawable drawable = (GradientDrawable) Tres.getBackground();
 						if (isWalking) {
 							drawable.setColor(Color.YELLOW);
