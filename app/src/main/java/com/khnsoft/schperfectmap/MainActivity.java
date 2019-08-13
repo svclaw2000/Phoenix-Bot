@@ -162,8 +162,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	int[] mPhoenixPos = null;
 	double fixed_default_yaw = -1.0;
 	double ex_fixed_yaw = -1.0;
-	final int PHOENIX_DEFAULT_SIZE_X = 320;
-	final int PHOENIX_DEFAULT_SIZE_Y = 400;
+	// final int PHOENIX_DEFAULT_SIZE_X = 320;
+	// final int PHOENIX_DEFAULT_SIZE_Y = 400;
+	final int PHOENIX_DEFAULT_SIZE_X = 640;
+	final int PHOENIX_DEFAULT_SIZE_Y = 800;
 	final int DEFAULT_POS_X = 540;
 	final int DEFAULT_POS_Y = 1100;
 	final Double[] DEFAULT_YAW = {237.0, 0.0, 0.0, 0.0, 190.57,        // 0-4
@@ -201,6 +203,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	long dialogTime = 0;
 	final long DIALOG_SHOW_TIME = 3000;
 	String sendMsg;
+	String action;
 	
 	final long WALKING_CHK_DURING_TIME = 500;
 	final float WALKING_WIDTH_MIN = 3;
@@ -670,7 +673,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 							cossum += Math.cos(Math.toRadians(i));
 						}
 						tmpYaw = Math.toDegrees(Math.atan2(sinsum, cossum)) % 360;
-						fixed_default_yaw = DEFAULT_YAW[mUserPos[0]];
+						// fixed_default_yaw = DEFAULT_YAW[mUserPos[0]];
+						fixed_default_yaw = 0;
 						lastSyncTime = System.currentTimeMillis();
 						fixCount = 0;
 						yawFilter = new ArrayList<Double>();
@@ -960,6 +964,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 								Log.i("@@@", "Dialog: " + resp);
 								dialogTime = System.currentTimeMillis();
 								dialogHandler.sendEmptyMessage(0);
+								if (json.getAsJsonObject("resp").getAsJsonObject("client_actions")
+										.getAsJsonArray("body").size() != 0) {
+									action = ((JsonObject) (json.getAsJsonObject("resp").getAsJsonObject("client_actions")
+											.getAsJsonArray("body").get(0)))
+											.getAsJsonArray("object").get(0).toString();
+									if (action.equals("arm1") || action.equals("arm2"))
+										Log.i("@@@", "ARM");
+										Glide.with(MainActivity.this).load(R.raw.stickman2).into(ivTarget);
+								}
 							}
 						}
 					} catch (Exception e) {
@@ -1089,6 +1102,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		// 위치에 의한 캐릭터 위치 조정
 		double fixedYaw = fixed_default_yaw + Math.toDegrees(Math.atan2(toonPos[1] - userPos[1], userPos[0] - toonPos[0]));
 		if (toonPos[0] == userPos[0] && toonPos[1] == userPos[1]) fixedYaw = ex_fixed_yaw;
+		// Log.i("@@@", ""+fixedYaw);
 		ex_fixed_yaw = fixedYaw;
 		while (fixedYaw < 0 || fixedYaw > 360) {
 			fixedYaw += 360;
@@ -1097,13 +1111,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		// Log.i("@@@", String.format("Default yaw: %s, Fixed yaw: %s", fixed_default_yaw, fixedYaw));
 		
 		// 각도에 의한 캐릭터 위치 조정
-		float centerPosX = (float) (DEFAULT_POS_X + (fixedYaw - userDirt[0]) * 25);
+		// float centerPosX = (float) (DEFAULT_POS_X + (fixedYaw - userDirt[0]) * 25);
+		// float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 32);
+		float centerPosX = (float) ((fixedYaw - userDirt[0]) * 25);
 		float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 32);
 		
 		// Log.i("@@@", String.format("X: %s, Y: %s", centerPosX, centerPosY));
 		
 		phoenix.setLayoutParams(params);
 		sendable = false;
+		// Log.i("@@@", centerPosX + "," + centerPosY);
 		if (centerPosX < 0 || centerPosX > 1080 || centerPosY < 0 || centerPosY > 1920) {
 			phoenix.setVisibility(View.INVISIBLE);
 			displayPos = null;
