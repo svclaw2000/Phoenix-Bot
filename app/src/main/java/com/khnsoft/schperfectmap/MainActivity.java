@@ -24,12 +24,16 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -142,7 +146,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	
 	WifiManager wm;
 	List<ScanResult> scanResult;
-	String[] permissions = new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.CAMERA};
+	String[] permissions = new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO};
 	boolean wifiScanning = false;
 	
 	String strJson;
@@ -193,6 +197,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	
 	EditText dialogInput;
 	Button dialogSend;
+	Button Bstt;
 	boolean sendable = false;
 	float[] displayPos = null;
 	TextView dialogMsg;
@@ -359,6 +364,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		dialogMsg.setGravity(Gravity.CENTER);
 		dialogMsg.setBackgroundResource(R.drawable.ap_layout_box_white);
 		((FrameLayout) findViewById(R.id.mainView)).addView(dialogMsg);
+		
+		Bstt = findViewById(R.id.voiceStream);
+		Bstt.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View view) {
+				inputVoice(dialogInput);
+			}
+		});
 		
 		/* Decision Tree
 		FILE_NAME = "identifier.md";
@@ -1308,7 +1321,64 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	}
 	*/
 	
-	void calibrate_location(int[] userLoc, float[] gData, float aData) {
-	
+	void inputVoice(final EditText dialog) {
+		try {
+			Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+			intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, this.getPackageName());
+			intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ko-KR");
+			final SpeechRecognizer stt = SpeechRecognizer.createSpeechRecognizer(this);
+			stt.setRecognitionListener(new RecognitionListener() {
+				@Override
+				public void onReadyForSpeech(Bundle bundle) {
+					Toast.makeText(MainActivity.this, "음성 입력 시작", Toast.LENGTH_SHORT).show();
+				}
+				
+				@Override
+				public void onBeginningOfSpeech() {
+				
+				}
+				
+				@Override
+				public void onRmsChanged(float v) {
+				
+				}
+				
+				@Override
+				public void onBufferReceived(byte[] bytes) {
+				
+				}
+				
+				@Override
+				public void onEndOfSpeech() {
+				
+				}
+				
+				@Override
+				public void onError(int i) {
+					Toast.makeText(MainActivity.this, "오류: " + i, Toast.LENGTH_SHORT).show();
+					stt.destroy();
+				}
+				
+				@Override
+				public void onResults(Bundle bundle) {
+					ArrayList<String> result = (ArrayList<String>) bundle.get(SpeechRecognizer.RESULTS_RECOGNITION);
+					dialog.setText(result.get(0));
+					stt.destroy();
+				}
+				
+				@Override
+				public void onPartialResults(Bundle bundle) {
+				
+				}
+				
+				@Override
+				public void onEvent(int i, Bundle bundle) {
+				
+				}
+			});
+			stt.startListening(intent);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }

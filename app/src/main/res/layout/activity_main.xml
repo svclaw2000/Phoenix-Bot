@@ -97,6 +97,13 @@
 			android:layout_height="match_parent"
 			android:layout_weight="1"
 			android:text="SEND" />
+		
+		<Button
+			android:id="@+id/voiceStream"
+			android:layout_width="0dp"
+			android:layout_height="match_parent"
+			android:layout_weight="1"
+			android:text="PRESS" />
 	</LinearLayout>
 	</LinearLayout>
 	
