@@ -340,7 +340,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		});
 		// phoenix.setImageResource(R.drawable.phoenix);
 		ivTarget = new GlideDrawableImageViewTarget(phoenix, 1);
-		phoenix.setImageResource(R.drawable.stickman2);
+		phoenix.setImageResource(R.drawable.character);
 		
 		phoenix.setLayoutParams(new ViewGroup.LayoutParams(PHOENIX_DEFAULT_SIZE_X, PHOENIX_DEFAULT_SIZE_Y));
 		phoenix.setVisibility(View.INVISIBLE);
@@ -641,6 +641,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						isWalking = (WALKING_WIDTH_MIN < diff);
 						isWalking = true;
 						GradientDrawable drawable = (GradientDrawable) Tres.getBackground();
+						
+						/*
 						if (isWalking) {
 							drawable.setColor(Color.YELLOW);
 							if (!wifiScanning) {
@@ -650,6 +652,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						}
 						else
 							drawable.setColor(Color.WHITE);
+						*/
 						
 						chkWalkSet = new ArrayList<Float>();
 						lastChkWalking = System.currentTimeMillis();
@@ -672,11 +675,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			
 			if (mReady && gReady && SensorManager.getRotationMatrix(rMat, iMat, gData, mData)) {
 				accYaw = (Math.toDegrees(SensorManager.getOrientation(rMat, orientation)[0]) + 360) % 360;
+				// accYaw = 0;
 				//*
-				if (fixMode && mRoll < MAX_ROLL && mRoll > MIN_ROLL && mPitch < MAX_PITCH && mPitch > MIN_PITCH) {
+				if (fixMode) { // && mRoll < MAX_ROLL && mRoll > MIN_ROLL && mPitch < MAX_PITCH && mPitch > MIN_PITCH) {
 					if (fixCount == 0) fixYaw = new double[MAX_FIX_COUNT];
 					if (fixCount < MAX_FIX_COUNT) {
-						fixYaw[fixCount] = accYaw;
+						// fixYaw[fixCount] = accYaw;
+						fixYaw[fixCount] = 130;
 						fixCount++;
 					} else {
 						double sinsum = 0;
@@ -687,7 +692,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						}
 						tmpYaw = Math.toDegrees(Math.atan2(sinsum, cossum)) % 360;
 						// fixed_default_yaw = DEFAULT_YAW[mUserPos[0]];
-						fixed_default_yaw = 0;
+						fixed_default_yaw = 150;
 						lastSyncTime = System.currentTimeMillis();
 						fixCount = 0;
 						yawFilter = new ArrayList<Double>();
@@ -789,8 +794,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			if (action != null) {
 				if (action.equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
 					getWIFIScanResult();
-					if (isWalking) wm.startScan();
-					else wifiScanning = false;
+					// if (isWalking) wm.startScan();
+					// else wifiScanning = false;
 				} else if (action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
 					context.sendBroadcast(new Intent("wifi.ON_NETWORK_STATE_CHANGED"));
 				}
@@ -961,9 +966,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 								if (json.getAsJsonObject("mr").has("users")) {
 									JsonObject userLocation = (JsonObject) ((JsonObject) json.getAsJsonObject("mr").getAsJsonArray("users").get(0))
 											.getAsJsonArray("location").get(0);
-									Tres.setText(userLocation.get("map").toString() + userLocation.get("tile").toString());
+									Tres.setText(userLocation.get("map").toString() + "\"3/0\""); // userLocation.get("tile").toString());
 									String[] tile = userLocation.get("tile").toString().replace("\"", "").split("/");
-									mUserPos = new int[]{Integer.parseInt(tile[0]), Integer.parseInt(tile[1])};
+									// mUserPos = new int[]{Integer.parseInt(tile[0]), Integer.parseInt(tile[1])};
+									mUserPos = new int[] {3,0};
 									String[] phoenixLocation = ((JsonObject) json.getAsJsonObject("mr").getAsJsonArray("systems").get(1))
 											.getAsJsonObject("location").get("tile").toString().replace("\"", "").split("/");
 									mPhoenixPos = new int[]{Integer.parseInt(phoenixLocation[0]), Integer.parseInt(phoenixLocation[1])};
@@ -984,7 +990,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 											.getAsJsonArray("object").get(0).toString();
 									if (action.equals("arm1") || action.equals("arm2"))
 										Log.i("@@@", "ARM");
-										Glide.with(MainActivity.this).load(R.raw.stickman2).into(ivTarget);
+										Glide.with(MainActivity.this).load(R.drawable.character).into(ivTarget);
 								}
 							}
 						}
@@ -1115,21 +1121,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		// 위치에 의한 캐릭터 위치 조정
 		double fixedYaw = fixed_default_yaw + Math.toDegrees(Math.atan2(toonPos[1] - userPos[1], userPos[0] - toonPos[0]));
 		if (toonPos[0] == userPos[0] && toonPos[1] == userPos[1]) fixedYaw = ex_fixed_yaw;
-		// Log.i("@@@", ""+fixedYaw);
 		ex_fixed_yaw = fixedYaw;
-		while (fixedYaw < 0 || fixedYaw > 360) {
-			fixedYaw += 360;
+		while (fixedYaw <= 0 || fixedYaw > 360) {
 			fixedYaw %= 360;
+			fixedYaw += 360;
 		}
+		Log.i("@@@", ""+fixedYaw);
 		// Log.i("@@@", String.format("Default yaw: %s, Fixed yaw: %s", fixed_default_yaw, fixedYaw));
 		
 		// 각도에 의한 캐릭터 위치 조정
 		// float centerPosX = (float) (DEFAULT_POS_X + (fixedYaw - userDirt[0]) * 25);
 		// float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 32);
 		float centerPosX = (float) ((fixedYaw - userDirt[0]) * 25);
-		float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 32);
+		float centerPosY = (float) (DEFAULT_POS_Y + (userDirt[2] - DEFAULT_ROLL) * 31);
 		
-		// Log.i("@@@", String.format("X: %s, Y: %s", centerPosX, centerPosY));
+		Log.i("@@@", String.format("X: %s, Y: %s, UserDirt: %s, %s", centerPosX, centerPosY, userDirt[0], userDirt[1]));
 		
 		phoenix.setLayoutParams(params);
 		sendable = false;
