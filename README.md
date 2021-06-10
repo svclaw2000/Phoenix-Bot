@@ -1,8 +1,8 @@
 # Phoenix-Bot
 
-> KyuHwon Park, Young-Seob Jeong, "Indoor Dialog Agent in Mixed Reality," in Proceedings of the 17th Annual International Conference on Mobile Systems, Application, and Services (Mobisys), Seoul, South Korea, pp.708-709, June 17-21, 2019. (presentation: June 18) [ACK: NRF2017, SCH]
+> KyuHwon Park, Young-Seob Jeong, "Indoor Dialog Agent in Mixed Reality," in Proceedings of the 17th Annual International Conference on Mobile Systems, Application, and Services (Mobisys), Seoul, South Korea, pp.708-709, June 17-21, 2019. (presentation: June 18)
 
-> 김다혜, 박규훤, 정영섭, "현실 세계를 제어하는 혼합 현실 대화 시스템," 제31회 한글 및 한국어 정보처리 학술대회 논문집, October 11~12, 2019. (presentation: October 12) [ACK: NRF2017, SCH]
+> 김다혜, 박규훤, 정영섭, "현실 세계를 제어하는 혼합 현실 대화 시스템," 제31회 한글 및 한국어 정보처리 학술대회 논문집, October 11~12, 2019. (presentation: October 12)
 
 ## 📄 Introduction
 "Indoor Dialog Agent in Mixed Reality" "현실 세계를 제어하는 혼합 현실 대화 시스템" 논문 관련 코드  [[Video1](https://www.youtube.com/watch?v=U2FA-XxVPvM)] [[Video2](https://www.youtube.com/watch?v=nNpo-6WtzOo)]  
